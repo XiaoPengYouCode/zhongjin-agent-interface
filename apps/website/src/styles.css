@@ -970,6 +970,13 @@ body {
   color: var(--text);
 }
 
+/* 流式中的纯文本（未完成 markdown 解析前）：与最终 markdown 视觉一致 */
+.streaming-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.65;
+}
+
 /* 统一间距 token：正文与特殊块之间用 --block-gap，特殊块之间用 --tool-gap */
 .tool-call {
   margin: 0 0 var(--tool-gap);

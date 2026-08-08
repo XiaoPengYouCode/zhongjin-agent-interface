@@ -13,11 +13,9 @@ export function MessageList({
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
-  // 程序化滚动会触发 scroll 事件。记录我们设置的目标位置，
-  // 事件里当前位置与目标一致即为程序化滚动，直接跳过——
-  // 避免流式增长时以过期布局把 stick 误置为 false（时间窗方案不可靠，
-  // 事件可能在主线程繁忙时延迟处理）。
-  const lastSetScrollTop = useRef(-1);
+  // 程序化滚动会触发 scroll 事件：记录时间戳，窗口期内的事件视为程序化滚动，
+  // 不参与 stick 判定（避免流式增长时以过期布局误判）。
+  const lastProgScroll = useRef(0);
   const DEBUG = useRef(
     typeof localStorage !== "undefined" && localStorage.getItem("pi-web-debug") === "1",
   );
@@ -26,32 +24,36 @@ export function MessageList({
     if (DEBUG.current) console.debug(`[scroll] ${msg}`, extra ?? "");
   };
 
+  /** 滚到最新消息：用 scrollIntoView 定位真实元素（content-visibility 下
+   *  scrollHeight 是估算值，不可用；浏览器会为目标元素计算真实位置）。 */
   const scrollToBottom = () => {
     const el = scroller.current;
     if (!el) return;
-    lastSetScrollTop.current = el.scrollHeight;
-    el.scrollTop = el.scrollHeight;
-    logScroll("programmatic -> bottom", {
-      scrollTop: el.scrollTop,
-      scrollHeight: el.scrollHeight,
-      clientHeight: el.clientHeight,
-    });
+    const last = el.lastElementChild as HTMLElement | null;
+    if (last) {
+      lastProgScroll.current = performance.now();
+      last.scrollIntoView({ block: "end" });
+    } else {
+      lastProgScroll.current = performance.now();
+      el.scrollTop = el.scrollHeight;
+    }
+    logScroll("programmatic -> bottom");
   };
 
   const onScroll = () => {
     const el = scroller.current;
     if (!el) return;
-    if (Math.abs(el.scrollTop - lastSetScrollTop.current) < 2) {
+    if (performance.now() - lastProgScroll.current < 120) {
       logScroll("ignore (programmatic)");
       return;
     }
-    const next = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    // stick 判定：最后一条消息的底部距容器底部的距离（不依赖 scrollHeight，
+    // 与 content-visibility 的估算高度兼容）。
+    const last = el.lastElementChild as HTMLElement | null;
+    if (!last) return;
+    const next = el.getBoundingClientRect().bottom - last.getBoundingClientRect().bottom < 80;
     if (next !== stick.current) {
-      logScroll(`stick ${stick.current} -> ${next}`, {
-        scrollTop: el.scrollTop,
-        scrollHeight: el.scrollHeight,
-        clientHeight: el.clientHeight,
-      });
+      logScroll(`stick ${stick.current} -> ${next}`);
     }
     stick.current = next;
   };

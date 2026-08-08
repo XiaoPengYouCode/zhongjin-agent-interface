@@ -16,11 +16,10 @@
     "anser": "catalog:",
     "diff": "catalog:",
     "highlight.js": "catalog:",
+    "marked-react": "catalog:",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-icons": "catalog:",
-    "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1"
+    "react-icons": "catalog:"
   },
   "devDependencies": {
     "@types/diff": "catalog:",
