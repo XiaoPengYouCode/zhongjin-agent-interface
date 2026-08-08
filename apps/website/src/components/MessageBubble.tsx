@@ -1,4 +1,5 @@
 import { memo, useEffect } from "react";
+import { MdPsychology } from "react-icons/md";
 import { Markdown } from "./Markdown.tsx";
 import { ToolCallBlock } from "./ToolCallBlock.tsx";
 import type { UiMessage, UiPart } from "../lib/types.ts";
@@ -23,7 +24,7 @@ function ThinkingBlock({
   return (
     <details className="thinking" open={streaming}>
       <summary>
-        <span className="thinking-dot" />
+        <MdPsychology className="thinking-icon" />
         <span className="tool-name">thinking</span>
       </summary>
       <div className={streaming ? "thinking-text thinking-text-live" : "thinking-text"}>

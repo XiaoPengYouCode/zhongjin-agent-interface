@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { diffLines } from "diff";
 
 // ---------------------------------------------------------------------------
 // Per-tool metadata: icon + human-readable summary (no raw JSON in the UI).
@@ -93,7 +94,15 @@ function fileName(path: string): string {
   return parts[parts.length - 1] || p;
 }
 
-function summarizeArgs(name: string, args: Record<string, unknown>): string {
+interface EditSummary {
+  n: number;
+  added: number;
+  removed: number;
+}
+
+type SummaryResult = string | EditSummary;
+
+function summarizeArgs(name: string, args: Record<string, unknown>): SummaryResult {
   switch (name) {
     case "bash": {
       const cmd = String(args.command ?? "");
@@ -109,9 +118,21 @@ function summarizeArgs(name: string, args: Record<string, unknown>): string {
       return `${path}（新增 ${lines} 行）`;
     }
     case "edit": {
-      const path = String(args.path ?? "");
-      const n = Array.isArray(args.edits) ? args.edits.length : 0;
-      return `${path}（${n} 处修改）`;
+      const edits = Array.isArray(args.edits)
+        ? (args.edits as Array<{ oldText?: string; newText?: string }>)
+        : [];
+      // 折叠态展示修改规模：N 处 · +新增/-删除 行数。
+      let added = 0;
+      let removed = 0;
+      for (const e of edits) {
+        const parts = diffLines(e.oldText ?? "", e.newText ?? "");
+        for (const p of parts) {
+          if (p.added) added += p.value.split("\n").filter(Boolean).length;
+          else if (p.removed) removed += p.value.split("\n").filter(Boolean).length;
+        }
+      }
+      const n = edits.length;
+      return { n, added, removed };
     }
     default: {
       // 取 1-2 个非大对象的字段做摘要。
@@ -127,10 +148,24 @@ function summarizeArgs(name: string, args: Record<string, unknown>): string {
   }
 }
 
-export function toolSummary(name: string, args: Record<string, unknown>): string {
-  if (name === "read" || name === "write" || name === "edit") {
-    const path = String(args.path ?? "");
-    return fileName(path) || summarizeArgs(name, args);
+/** 工具摘要：text 用于 title，node 用于显示（edit 带 +绿/-红）。 */
+export function toolSummary(
+  name: string,
+  args: Record<string, unknown>,
+): { text: string; node: ReactNode } {
+  const edit = summarizeArgs(name, args) as unknown;
+  if (name === "edit" && edit && typeof edit === "object") {
+    const { n, added, removed } = edit as { n: number; added: number; removed: number };
+    return {
+      text: `${n} 处 · +${added}/-${removed}`,
+      node: (
+        <>
+          {n} 处 · <span className="summary-add">+{added}</span>/
+          <span className="summary-del">-{removed}</span>
+        </>
+      ),
+    };
   }
-  return summarizeArgs(name, args);
+  const text = name === "read" ? fileName(String(args.path ?? "")) || String(edit) : String(edit);
+  return { text, node: text };
 }

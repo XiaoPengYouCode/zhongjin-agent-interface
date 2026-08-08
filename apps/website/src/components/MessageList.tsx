@@ -63,20 +63,25 @@ export function MessageList({ messages }: { messages: UiMessage[] }) {
 
   // thinking / tool 块展开或折叠时，无条件下拉一次（由组件广播事件驱动）。
   useEffect(() => {
-    const onAutoScroll = () => requestAnimationFrame(scrollToBottom);
+    // thinking / tool 展开折叠触发的自动滚动：仅在用户贴底（stick）时生效，
+    // 用户手动上滑且未回到底部时忽略，避免抢占手动滚动。
+    const onAutoScroll = () => {
+      if (!stick.current) return;
+      requestAnimationFrame(scrollToBottom);
+    };
     document.addEventListener("pi:autoscroll", onAutoScroll);
     return () => document.removeEventListener("pi:autoscroll", onAutoScroll);
   }, []);
 
   // 输入框增高会压缩 .messages 的视口，底部内容被遮住；
-  // 视口变矮时强制滚到底部，保持最新内容可见。
+  // 视口变矮时若用户贴底则跟随滚到底部（手动上滑未回底时不抢占）。
   useEffect(() => {
     const el = scroller.current;
     if (!el) return;
     let prevH = 0;
     const ro = new ResizeObserver((entries) => {
       const h = entries[0]?.contentRect.height ?? 0;
-      if (prevH !== 0 && h < prevH) requestAnimationFrame(scrollToBottom);
+      if (prevH !== 0 && h < prevH && stick.current) requestAnimationFrame(scrollToBottom);
       prevH = h;
     });
     ro.observe(el);

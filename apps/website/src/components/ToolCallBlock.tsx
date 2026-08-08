@@ -67,6 +67,7 @@ function ToolBody({ part }: { part: UiToolCall }) {
 }
 
 export const ToolCallBlock = memo(function ToolCallBlock({ part }: { part: UiToolCall }) {
+  const summary = toolSummary(part.name, (part.args ?? {}) as Record<string, unknown>);
   const [open, setOpen] = useState(part.state === "running");
   const outRef = useRef<HTMLDivElement>(null);
   const collapseRef = useRef<HTMLDivElement>(null);
@@ -80,13 +81,18 @@ export const ToolCallBlock = memo(function ToolCallBlock({ part }: { part: UiToo
     else setOpen(false);
   }, [part.state]);
 
-  // 展开/收起时把容器高度过渡到内容高度；展开期间内容变化也跟随重测。
+  // 展开/收起时把容器高度过渡到内容高度。
+  // 折叠动画只由 open 驱动：done 后内容更新不再重测，
+  // 避免流式 message_update 把正在折叠的容器重新拉回展开（卡出空白）。
   useEffect(() => {
     const el = collapseRef.current;
     if (!el) return;
-    if (open) setHeight(el.scrollHeight);
-    else setHeight(0);
-  }, [open, part.output, part.state]);
+    if (!open) {
+      setHeight(0);
+      return;
+    }
+    setHeight(el.scrollHeight);
+  }, [open, part.state === "running" ? part.output : null]);
 
   // 展开/折叠时强制外层滚动到底一次；再延迟一次覆盖展开动画结束后的最终高度。
   useEffect(() => {
@@ -108,21 +114,10 @@ export const ToolCallBlock = memo(function ToolCallBlock({ part }: { part: UiToo
       <button className="tool-call-head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className="tool-kind-icon">{toolIcon(part.name)}</span>
         <span className="tool-name">{part.name}</span>
-        <span
-          className="tool-summary"
-          title={toolSummary(part.name, (part.args ?? {}) as Record<string, unknown>)}
-        >
-          {toolSummary(part.name, (part.args ?? {}) as Record<string, unknown>)}
+        <span className="tool-summary" title={summary.text}>
+          {summary.node}
         </span>
-        <span className="tool-state">
-          {part.state === "running" ? (
-            <span className="spinner" aria-label="running" />
-          ) : part.state === "error" ? (
-            "✕"
-          ) : (
-            "✓"
-          )}
-        </span>
+        {part.state === "running" && <span className="spinner" aria-label="running" />}
       </button>
       <div
         className="tool-body-collapse"
