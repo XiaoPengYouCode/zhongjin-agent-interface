@@ -134,29 +134,27 @@ function UserMessage({ message, onRetract, onEditResend }: UserMessageProps) {
             </div>
           </div>
         ) : (
-          <div className="msg-bubble msg-user-bubble">
-            {message.text}
-            {entryId && (
-              <div className="msg-user-actions">
-                <button
-                  className="icon-btn"
-                  onClick={() => {
-                    setEditText(message.text);
-                    setEditing(true);
-                  }}
-                  title="编辑并重发"
-                >
-                  {EDIT_ICON}
-                </button>
-                <button
-                  className="icon-btn"
-                  onClick={() => onRetract(entryId)}
-                  title="撤回该消息及之后的对话"
-                >
-                  {TRASH_ICON}
-                </button>
-              </div>
-            )}
+          <div className="msg-bubble msg-user-bubble">{message.text}</div>
+        )}
+        {entryId && !editing && (
+          <div className="msg-user-actions">
+            <button
+              className="icon-btn"
+              onClick={() => {
+                setEditText(message.text);
+                setEditing(true);
+              }}
+              title="编辑并重发"
+            >
+              {EDIT_ICON}
+            </button>
+            <button
+              className="icon-btn"
+              onClick={() => onRetract(entryId)}
+              title="撤回该消息及之后的对话"
+            >
+              {TRASH_ICON}
+            </button>
           </div>
         )}
       </div>

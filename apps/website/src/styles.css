@@ -866,19 +866,7 @@ body {
   white-space: pre-wrap;
   word-break: break-word;
   font-size: 15px;
-  position: relative;
   min-width: 60%; /* 短消息也保持足够的视觉宽度（1.5x） */
-}
-
-/* hover 桥：向右延伸覆盖按钮与气泡之间的间隙，
-   鼠标经过间隙时气泡仍保持 hover，操作按钮不会消失 */
-.msg-user-bubble::after {
-  content: "";
-  position: absolute;
-  top: -4px;
-  bottom: -4px;
-  left: 100%;
-  width: 16px;
 }
 
 .msg-user-wrap {
@@ -888,23 +876,39 @@ body {
   align-items: flex-end;
 }
 
-/* 用户消息 hover 操作（编辑/撤回）：定位在气泡右侧 */
+/* 用户消息操作（编辑/撤回）：文档流位于气泡下方，右对齐；
+   平时隐藏但预留位置，消息 hover 时显示，按钮 hover 出现阴影 frame */
 .msg-user-actions {
-  position: absolute;
-  top: 50%;
-  left: 100%;
-  margin-left: 6px;
-  transform: translateY(-50%);
   display: flex;
+  justify-content: flex-end;
   gap: 2px;
-  padding: 2px;
-  border-radius: 8px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
+  padding: 4px 2px 0;
   opacity: 0;
-  transition: opacity 0.15s;
   pointer-events: none;
-  z-index: 1; /* 高于气泡的 ::after 桥，保证按钮可点 */
+  transition: opacity 0.15s;
+}
+
+.msg-user-wrap:hover .msg-user-actions,
+.msg-user-actions:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.msg-user-actions .icon-btn {
+  width: 20px;
+  height: 20px;
+  color: var(--text-faint);
+  border-radius: 5px;
+}
+
+.msg-user-actions .icon-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.msg-user-actions .icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-dim);
 }
 
 .msg-user-bubble:hover .msg-user-actions,
@@ -1517,10 +1521,6 @@ body {
   animation: fade-in 0.18s ease;
 }
 
-.queue-item-steer {
-  border-color: rgba(86, 134, 254, 0.35);
-}
-
 .queue-tag {
   flex-shrink: 0;
   font-size: 11px;
@@ -1528,6 +1528,12 @@ body {
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent);
+}
+
+/* 引导标签：橙色区分（排队=蓝，引导=橙，仅靠标签区分） */
+.queue-tag-steer {
+  background: rgba(251, 191, 36, 0.12);
+  color: var(--amber);
 }
 
 .queue-text {

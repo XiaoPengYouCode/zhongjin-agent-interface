@@ -342,8 +342,10 @@ export function Composer({
     const isSteer = list === "st";
     const isEditing = editing?.list === list && editing.idx === idx;
     return isEditing ? (
-      <div className={`queue-item ${isSteer ? "queue-item-steer" : ""}`} key={key}>
-        <span className="queue-tag">{isSteer ? "引导" : "排队"}</span>
+      <div className="queue-item" key={key}>
+        <span className={`queue-tag ${isSteer ? "queue-tag-steer" : ""}`}>
+          {isSteer ? "引导" : "排队"}
+        </span>
         <input
           className="queue-edit"
           value={editValue}
@@ -366,8 +368,10 @@ export function Composer({
         </button>
       </div>
     ) : (
-      <div className={`queue-item ${isSteer ? "queue-item-steer" : ""}`} key={key}>
-        <span className="queue-tag">{isSteer ? "引导" : "排队"}</span>
+      <div className="queue-item" key={key}>
+        <span className={`queue-tag ${isSteer ? "queue-tag-steer" : ""}`}>
+          {isSteer ? "引导" : "排队"}
+        </span>
         <span className="queue-text">{t}</span>
         <button className="icon-btn" onClick={() => startEdit(list, idx, t)} title="编辑">
           {EDIT_ICON}
