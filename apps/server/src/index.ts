@@ -346,6 +346,10 @@ const server = createServer(async (req, res) => {
       sendJson(res, 200, { items: results });
       return;
     }
+    if (pathname === "/api/stats") {
+      sendJson(res, 200, service.getStats());
+      return;
+    }
     if (pathname === "/api/fs/list") {
       // @ 选文件：浏览当前工作目录（dir 参数下钻），q 过滤当前层。
       const q = (url.searchParams.get("q") ?? "").toLowerCase();

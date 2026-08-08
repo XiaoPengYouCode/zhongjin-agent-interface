@@ -220,7 +220,10 @@ function MiniRing({ percent }: { percent: number }) {
   );
 }
 
-function StatsCard({ stats }: { stats: SessionStats | null }) {
+function StatsCard({ stats, failed }: { stats: SessionStats | null; failed: boolean }) {
+  if (failed) {
+    return <div className="popover-empty">暂无数据</div>;
+  }
   if (!stats) {
     return <div className="popover-empty">加载中…</div>;
   }
@@ -284,17 +287,24 @@ export function StatusBar({
   onSetThinkingLevel,
 }: StatusBarProps) {
   const [stats, setStats] = useState<SessionStats | null>(null);
+  const [statsFailed, setStatsFailed] = useState(false);
 
   // 挂载 + 每次任务结束后刷新用量。
   useEffect(() => {
     fetchStats()
-      .then(setStats)
-      .catch(() => {});
+      .then((s) => {
+        setStats(s);
+        setStatsFailed(false);
+      })
+      .catch(() => setStatsFailed(true));
   }, []);
   useEffect(() => {
     if (streaming) return;
     fetchStats()
-      .then(setStats)
+      .then((s) => {
+        setStats(s);
+        setStatsFailed(false);
+      })
       .catch(() => {});
   }, [streaming]);
 
@@ -327,7 +337,7 @@ export function StatusBar({
                 <span className="session-folder">{folderName(cwd)}</span>
               </span>
             }
-            card={<StatsCard stats={stats} />}
+            card={<StatsCard stats={stats} failed={statsFailed} />}
           />
         )}
         {ctx && (
@@ -338,7 +348,7 @@ export function StatusBar({
                 <span className="ctx-pct">{ctx.percent.toFixed(0)}%</span>
               </span>
             }
-            card={<StatsCard stats={stats} />}
+            card={<StatsCard stats={stats} failed={statsFailed} />}
           />
         )}
       </span>
