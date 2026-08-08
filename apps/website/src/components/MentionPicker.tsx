@@ -47,10 +47,11 @@ export function MentionPicker({
 
   return (
     <div className="picker">
-      {trigger === "@" && (
+      {loading && items.length > 0 && <div className="picker-progress" />}
+      {trigger === "@" && dir && (
         <div className="picker-path">
           <MdFolder />
-          <span>{dir || "（当前目录）"}</span>
+          <span>{dir}</span>
         </div>
       )}
       {trigger === "@" && dir && (

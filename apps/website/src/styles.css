@@ -1588,6 +1588,37 @@ body {
   text-align: center;
 }
 
+/* 加载中细进度条（列表已有内容时替代“加载中…”大字，避免高度闪烁） */
+.picker-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+.picker-progress::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -40%;
+  width: 40%;
+  height: 100%;
+  background: var(--accent);
+  animation: picker-progress 0.9s ease-in-out infinite;
+}
+
+@keyframes picker-progress {
+  0% {
+    left: -40%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
 .picker-path {
   display: flex;
   align-items: center;

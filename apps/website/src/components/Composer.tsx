@@ -129,6 +129,7 @@ type MentionAction =
 const mentionReducer = (s: MentionState, a: MentionAction): MentionState => {
   switch (a.type) {
     case "open":
+      // 保留旧列表：加载期间不归零，避免高度闪烁；新结果到达后整体替换。
       return {
         ...s,
         open: true,
@@ -137,13 +138,13 @@ const mentionReducer = (s: MentionState, a: MentionAction): MentionState => {
         triggerPos: a.triggerPos,
         dir: a.dir,
         index: 0,
-        items: [],
         loading: true,
       };
     case "close":
       return { ...s, open: false };
     case "dir":
-      return { ...s, dir: a.dir, query: "", index: 0, items: [], loading: true };
+      // 下钻同样保留旧列表（结果内容差异大，稍后由新数据替换）。
+      return { ...s, dir: a.dir, query: "", index: 0, loading: true };
     case "items":
       return { ...s, items: a.items, loading: a.loading };
     case "index":
