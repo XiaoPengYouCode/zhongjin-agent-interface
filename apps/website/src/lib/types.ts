@@ -159,3 +159,38 @@ export interface UiMessage {
 }
 
 export type ConnectionState = "connecting" | "open" | "closed";
+
+// ---------------------------------------------------------------------------
+// Model picker / session stats
+// ---------------------------------------------------------------------------
+
+export interface ModelInfo {
+  provider: string;
+  id: string;
+  name: string;
+}
+
+export interface ModelPickerState {
+  models: ModelInfo[];
+  current: ModelInfo | null;
+  thinking: { current: string; available: string[] };
+}
+
+export interface SessionStats {
+  sessionId: string;
+  sessionFile?: string | null;
+  userMessages: number;
+  assistantMessages: number;
+  toolCalls: number;
+  toolResults: number;
+  totalMessages: number;
+  tokens: {
+    input: number;
+    output: number;
+    cacheRead: number;
+    cacheWrite: number;
+    total: number;
+  };
+  cost: number;
+  contextUsage?: { tokens: number; contextWindow: number; percent: number };
+}

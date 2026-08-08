@@ -99,7 +99,7 @@ body {
 /* ------------------------------------------------------------------ */
 
 .sidebar {
-  width: 240px;
+  width: 280px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -163,17 +163,22 @@ body {
 }
 
 .btn-new {
-  background: transparent;
-  border: none;
-  color: var(--text-dim);
-  padding: 6px 8px;
-  font-size: 14px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 14px;
+  font-size: 13.5px;
   font-weight: 500;
-  border-radius: 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .btn-new:hover:not(:disabled) {
-  background: var(--bg-hover);
+  background: var(--bg-active);
+  border-color: var(--border);
   color: var(--text);
 }
 
@@ -229,33 +234,32 @@ body {
 }
 
 .session-group {
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 
+/* DeepSeek 风格：分区标题应比其下条目更高、更醒目（父压子） */
 .session-group-head {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 6px 10px;
-  font-size: 12.5px;
-  color: var(--text-dim);
-  background: var(--bg-elev);
-  border: 1px solid var(--border-soft);
-  border-radius: 8px;
+  gap: 6px;
+  padding: 14px 8px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  border-radius: 0;
   cursor: pointer;
   font-family: inherit;
   text-align: left;
-  transition:
-    background 0.15s,
-    border-color 0.15s,
-    color 0.15s;
+  transition: color 0.15s;
 }
 
 .session-group-head:hover {
   color: var(--text);
-  background: var(--bg-hover);
-  border-color: var(--border);
+  background: transparent;
+  border-color: transparent;
 }
 
 .group-chevron {
@@ -283,15 +287,15 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: 600;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
 }
 
 .folder-count {
-  font-size: 11px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--bg-hover);
+  font-size: 11.5px;
+  font-weight: 400;
   color: var(--text-faint);
+  background: transparent;
+  padding: 0;
 }
 
 .session-item {
@@ -301,7 +305,7 @@ body {
   background: transparent;
   color: var(--text);
   border-radius: 8px;
-  padding: 7px 10px 7px 22px;
+  padding: 9px 10px 9px 20px;
   cursor: pointer;
   font-family: inherit;
 }
@@ -317,15 +321,14 @@ body {
 .session-title {
   font-size: 14px;
   font-weight: 500;
+  color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.session-meta {
-  font-size: 12px;
-  color: var(--text-faint);
-  margin-top: 2px;
+.session-item.active .session-title {
+  color: var(--text);
 }
 
 .sidebar-foot {
@@ -401,10 +404,6 @@ body {
   gap: 8px;
 }
 
-.status-idle {
-  color: var(--text-faint);
-}
-
 .status-streaming {
   color: var(--accent);
   display: flex;
@@ -428,6 +427,59 @@ body {
   color: var(--text-dim);
 }
 
+.session-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: default;
+}
+
+.ctx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  cursor: default;
+}
+
+.mini-ring {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.mini-ring-bg {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 2.5;
+}
+
+.mini-ring-fg {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.4s ease;
+}
+
+.ctx-pct {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.session-folder {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .theme-toggle {
   font-size: 14px;
   line-height: 1;
@@ -440,6 +492,269 @@ body {
   height: 15px;
   display: block;
   color: var(--text-dim);
+}
+
+/* ------------------------------------------------------------------ */
+/* Status bar popovers (model picker / session stats)                   */
+/* ------------------------------------------------------------------ */
+
+.popover-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  min-width: 300px;
+  max-width: 380px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-elev);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  animation: fade-in 0.15s ease;
+  overflow: hidden;
+}
+
+.popover-empty {
+  padding: 14px 16px;
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+/* Model card */
+.model-card {
+  display: flex;
+  flex-direction: column;
+  max-height: 460px;
+}
+
+.model-card-section {
+  padding: 10px 12px;
+}
+
+.model-card-section + .model-card-section {
+  border-top: 1px solid var(--border-soft);
+}
+
+.model-card-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.think-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.think-chip {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.think-chip:hover {
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.think-chip.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.model-list-section {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.model-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.model-group-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.model-group-head:hover {
+  color: var(--text);
+}
+
+.model-provider {
+  font-family: var(--mono);
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-count {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.model-item {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 4px 5px 18px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.model-item:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.model-item.active {
+  color: var(--accent);
+}
+
+.model-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-id {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Stats card */
+.stats-card {
+  padding: 14px;
+}
+
+.stats-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.stats-ring-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.ctx-ring {
+  width: 60px;
+  height: 60px;
+}
+
+.ctx-ring-bg {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 5;
+}
+
+.ctx-ring-fg {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 5;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.4s ease;
+}
+
+.ctx-ring-text {
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--text);
+  font-family: var(--mono);
+}
+
+.stats-ring-meta {
+  text-align: center;
+}
+
+.stats-ring-window {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.stats-ring-label {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.stats-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  min-width: 180px;
+}
+
+.stats-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.stats-k {
+  color: var(--text-faint);
+}
+
+.stats-v {
+  font-family: var(--mono);
+  color: var(--text);
+}
+
+.stats-cost {
+  color: var(--green);
 }
 
 .error-banner {
@@ -512,7 +827,7 @@ body {
 .msg-row {
   display: flex;
   margin: 0 auto 28px;
-  max-width: 760px;
+  max-width: 950px;
   padding: 0 24px;
 }
 
@@ -1066,7 +1381,7 @@ body {
 
 .composer {
   flex-shrink: 0;
-  max-width: 760px;
+  max-width: 950px;
   width: 100%;
   margin: 0 auto;
   padding: 4px 24px 24px;

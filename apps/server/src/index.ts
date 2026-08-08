@@ -254,6 +254,33 @@ const server = createServer(async (req, res) => {
       sendJson(res, 200, { sessions });
       return;
     }
+    if (pathname === "/api/models") {
+      const m = service.session.model;
+      sendJson(res, 200, {
+        models: service.listModels(),
+        current: m ? { provider: m.provider, id: m.id, name: m.name ?? m.id } : null,
+        thinking: service.getThinking(),
+      });
+      return;
+    }
+    if (pathname === "/api/model" && req.method === "POST") {
+      const body = (await readJsonBody(req)) as { provider?: string; id?: string };
+      if (!body.provider || !body.id) return sendError(res, 400, "Missing provider/id.");
+      await service.setModel(body.provider, body.id);
+      sendJson(res, 200, { ok: true });
+      return;
+    }
+    if (pathname === "/api/thinking" && req.method === "POST") {
+      const body = (await readJsonBody(req)) as { level?: string };
+      if (!body.level) return sendError(res, 400, "Missing level.");
+      service.setThinking(body.level);
+      sendJson(res, 200, { ok: true });
+      return;
+    }
+    if (pathname === "/api/stats") {
+      sendJson(res, 200, service.getStats());
+      return;
+    }
     if (pathname === "/api/state") {
       sendJson(res, 200, sessionState());
       return;

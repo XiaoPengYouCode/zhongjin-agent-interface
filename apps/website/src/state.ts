@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { fetchSessions, PiClient } from "./lib/client.ts";
+import { fetchSessions, PiClient, postModel, postThinking } from "./lib/client.ts";
 import { applyEvent, messagesToUi } from "./lib/messages.ts";
 import type {
   AgentSessionEvent,
@@ -81,6 +81,8 @@ export interface PiActions {
   newSession: (cwd?: string) => void;
   resume: (path: string) => void;
   clearError: () => void;
+  setModel: (provider: string, id: string) => Promise<void>;
+  setThinkingLevel: (level: string) => Promise<void>;
 }
 
 export function usePi() {
@@ -128,6 +130,38 @@ export function usePi() {
     }
   }, []);
 
+  // 会话信息：文件夹名 + 统计卡片 + 模型选择
+  const refreshSession = useCallback(async () => {
+    try {
+      const res = await fetch("/api/state");
+      if (!res.ok) return;
+      const s = (await res.json()) as SessionState;
+      dispatch({ type: "reset-session", session: s });
+    } catch {
+      // 忽略临时失败
+    }
+  }, []);
+
+  const setModel = useCallback(
+    async (provider: string, id: string) => {
+      try {
+        await postModel(provider, id);
+      } catch (err) {
+        dispatch({ type: "error", message: err instanceof Error ? err.message : String(err) });
+      }
+      await refreshSession();
+    },
+    [refreshSession],
+  );
+
+  const setThinkingLevel = useCallback(async (level: string) => {
+    try {
+      await postThinking(level);
+    } catch (err) {
+      dispatch({ type: "error", message: err instanceof Error ? err.message : String(err) });
+    }
+  }, []);
+
   const actions = useMemo<PiActions>(
     () => ({
       prompt: (text) => send({ type: "prompt", text }),
@@ -138,8 +172,10 @@ export function usePi() {
       newSession: (cwd) => send({ type: "newSession", ...(cwd ? { cwd } : {}) }),
       resume: (path) => send({ type: "resume", path }),
       clearError: () => dispatch({ type: "clear-error" }),
+      setModel,
+      setThinkingLevel,
     }),
-    [send],
+    [send, setModel, setThinkingLevel],
   );
 
   return { state, conn, sessions, actions };

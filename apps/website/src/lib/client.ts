@@ -1,4 +1,11 @@
-import type { ClientMessage, ConnectionState, ServerMessage, SessionInfo } from "./types.ts";
+import type {
+  ClientMessage,
+  ConnectionState,
+  ModelPickerState,
+  ServerMessage,
+  SessionInfo,
+  SessionStats,
+} from "./types.ts";
 
 /** Minimal WebSocket client with auto-reconnect and JSON framing. */
 export class PiClient {
@@ -88,4 +95,32 @@ export async function fetchSessions(): Promise<SessionInfo[]> {
   if (!res.ok) throw new Error(`Failed to fetch sessions (${res.status})`);
   const data = (await res.json()) as { sessions: SessionInfo[] };
   return data.sessions;
+}
+
+export async function fetchModelPickerState(): Promise<ModelPickerState> {
+  const res = await fetch("/api/models");
+  if (!res.ok) throw new Error(`Failed to fetch models (${res.status})`);
+  return (await res.json()) as ModelPickerState;
+}
+
+export async function fetchStats(): Promise<SessionStats> {
+  const res = await fetch("/api/stats");
+  if (!res.ok) throw new Error(`Failed to fetch stats (${res.status})`);
+  return (await res.json()) as SessionStats;
+}
+
+export async function postModel(provider: string, id: string): Promise<void> {
+  await fetch("/api/model", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ provider, id }),
+  });
+}
+
+export async function postThinking(level: string): Promise<void> {
+  await fetch("/api/thinking", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ level }),
+  });
 }

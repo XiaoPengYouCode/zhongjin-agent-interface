@@ -5,9 +5,11 @@ import type { UiMessage } from "../lib/types.ts";
 export function MessageList({ messages }: { messages: UiMessage[] }) {
   const scroller = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
-  // 程序化滚动触发 scroll 事件时，流式增长会让“距底距离”被高估，
-  // 从而把 stick 误置为 false。记录时间戳，窗口期内不参与判定。
-  const lastProgScroll = useRef(0);
+  // 程序化滚动会触发 scroll 事件。记录我们设置的目标位置，
+  // 事件里当前位置与目标一致即为程序化滚动，直接跳过——
+  // 避免流式增长时以过期布局把 stick 误置为 false（时间窗方案不可靠，
+  // 事件可能在主线程繁忙时延迟处理）。
+  const lastSetScrollTop = useRef(-1);
   const DEBUG = useRef(
     typeof localStorage !== "undefined" && localStorage.getItem("pi-web-debug") === "1",
   );
@@ -19,9 +21,9 @@ export function MessageList({ messages }: { messages: UiMessage[] }) {
   const scrollToBottom = () => {
     const el = scroller.current;
     if (!el) return;
-    lastProgScroll.current = performance.now();
+    lastSetScrollTop.current = el.scrollHeight;
     el.scrollTop = el.scrollHeight;
-    logScroll("programmatic scrollTop -> scrollHeight", {
+    logScroll("programmatic -> bottom", {
       scrollTop: el.scrollTop,
       scrollHeight: el.scrollHeight,
       clientHeight: el.clientHeight,
@@ -31,8 +33,8 @@ export function MessageList({ messages }: { messages: UiMessage[] }) {
   const onScroll = () => {
     const el = scroller.current;
     if (!el) return;
-    if (performance.now() - lastProgScroll.current < 100) {
-      logScroll("ignore (programmatic window)");
+    if (Math.abs(el.scrollTop - lastSetScrollTop.current) < 2) {
+      logScroll("ignore (programmatic)");
       return;
     }
     const next = el.scrollHeight - el.scrollTop - el.clientHeight < 80;

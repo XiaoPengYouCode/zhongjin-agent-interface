@@ -10,6 +10,9 @@ import {
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
 
+/** Structural copy of pi-agent-core's ThinkingLevel union. */
+type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+
 /**
  * The runtime factory is cwd-agnostic: each PiService instance is built for
  * one session file and keeps its own runtime, so switching between sessions
@@ -86,6 +89,46 @@ export class PiService {
       steering: this.session.getSteeringMessages(),
       followUp: this.session.getFollowUpMessages(),
     };
+  }
+
+  // -------------------------------------------------------------------
+  // Model / thinking / stats
+  // -------------------------------------------------------------------
+
+  /** Enumerate known models across all providers. */
+  listModels(): Array<{ provider: string; id: string; name: string }> {
+    return this.runtime.services.modelRuntime.getModels().map((m) => ({
+      provider: m.provider,
+      id: m.id,
+      name: m.name ?? m.id,
+    }));
+  }
+
+  /** Switch the session to another model. */
+  async setModel(provider: string, id: string): Promise<void> {
+    const model = this.runtime.services.modelRuntime
+      .getModels()
+      .find((m) => m.provider === provider && m.id === id);
+    if (!model) throw new Error(`Unknown model: ${provider}/${id}`);
+    await this.session.setModel(model);
+  }
+
+  /** Current thinking level + available levels. */
+  getThinking(): { current: string; available: string[] } {
+    return {
+      current: this.session.thinkingLevel ?? "off",
+      available: this.session.getAvailableThinkingLevels(),
+    };
+  }
+
+  /** Set thinking level (validated by the session). */
+  setThinking(level: string): void {
+    this.session.setThinkingLevel(level as ThinkingLevel);
+  }
+
+  /** Session usage stats (tokens, cost, context usage). */
+  getStats(): ReturnType<AgentSession["getSessionStats"]> {
+    return this.session.getSessionStats();
   }
 
   /**

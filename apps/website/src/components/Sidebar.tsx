@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { timeAgo } from "../lib/format.ts";
 import { pickFolder } from "../lib/fs.ts";
 import type { ConnectionState, SessionInfo } from "../lib/types.ts";
 
@@ -181,9 +180,6 @@ export function Sidebar({
                     onClick={() => onResume(s.path)}
                   >
                     <div className="session-title">{titleOf(s)}</div>
-                    <div className="session-meta">
-                      {timeAgo(s.modified)} · {s.messageCount} 条
-                    </div>
                   </button>
                 ))}
             </div>

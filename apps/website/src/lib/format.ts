@@ -21,3 +21,15 @@ export function toolArgsPreview(args: unknown): string {
   const s = JSON.stringify(args);
   return s.length > 60 ? `${s.slice(0, 60)}…` : s;
 }
+
+export function fmtTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${Math.round(n / 1_000)}k`;
+  return String(n);
+}
+
+export function folderName(cwd: string): string {
+  if (!cwd) return "（未知目录）";
+  const parts = cwd.split("/").filter(Boolean);
+  return parts.length > 0 ? parts[parts.length - 1] : cwd;
+}
