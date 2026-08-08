@@ -1,7 +1,12 @@
-import { memo } from "react";
+import { memo, useEffect } from "react";
 import { Markdown } from "./Markdown.tsx";
 import { ToolCallBlock } from "./ToolCallBlock.tsx";
 import type { UiMessage, UiPart } from "../lib/types.ts";
+
+/** 广播一次自动滚动请求（thinking/tool 展开折叠时由各组件触发）。 */
+function requestAutoScroll() {
+  document.dispatchEvent(new CustomEvent("pi:autoscroll"));
+}
 
 function ThinkingBlock({
   part,
@@ -10,6 +15,11 @@ function ThinkingBlock({
   part: Extract<UiPart, { kind: "thinking" }>;
   streaming: boolean;
 }) {
+  // thinking 出现（展开）与结束（折叠）时，强制外层滚动到底一次。
+  useEffect(() => {
+    requestAutoScroll();
+  }, [streaming]);
+
   return (
     <details className="thinking" open={streaming}>
       <summary>

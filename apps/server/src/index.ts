@@ -1,4 +1,5 @@
-import { createReadStream, existsSync, statSync } from "node:fs";
+import { getAgentDir, loadSkills } from "@earendil-works/pi-coding-agent";
+import { createReadStream, existsSync, readdirSync, statSync } from "node:fs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
@@ -93,6 +94,7 @@ type ClientMessage =
   | { type: "followUp"; text: string }
   | { type: "promoteToSteer"; text: string }
   | { type: "removeFromQueue"; text: string }
+  | { type: "editQueued"; text: string; newText: string }
   | { type: "abort" }
   | { type: "newSession"; cwd?: string }
   | { type: "resume"; path: string }
@@ -185,6 +187,9 @@ async function handleClientMessage(ws: WebSocket, msg: ClientMessage) {
       return;
     case "removeFromQueue":
       await service.removeFromQueue(msg.text);
+      return;
+    case "editQueued":
+      await service.editQueued(msg.text, msg.newText);
       return;
     case "abort":
       await service.abort();
@@ -298,8 +303,95 @@ const server = createServer(async (req, res) => {
       sendJson(res, 200, { ok: true });
       return;
     }
-    if (pathname === "/api/stats") {
-      sendJson(res, 200, service.getStats());
+    if (pathname === "/api/fs/search") {
+      // @ 输入 ≥2 字符时递归搜索（跳过 node_modules/.git/dist 等，200 条上限）。
+      const q = (url.searchParams.get("q") ?? "").toLowerCase();
+      const dirParam = (url.searchParams.get("dir") ?? "").replace(/^\/+|\/+$/g, "");
+      const baseDir = resolve(service.cwd, dirParam);
+      if (!baseDir.startsWith(service.cwd)) {
+        sendError(res, 400, "Invalid dir.");
+        return;
+      }
+      const SKIP = new Set([
+        "node_modules",
+        ".git",
+        "dist",
+        "build",
+        "target",
+        ".next",
+        ".venv",
+        "__pycache__",
+      ]);
+      const results: Array<{ name: string; type: "file"; path: string }> = [];
+      const walk = (dir: string, rel: string) => {
+        if (results.length >= 200) return;
+        let entries;
+        try {
+          entries = readdirSync(dir, { withFileTypes: true });
+        } catch {
+          return;
+        }
+        for (const e of entries) {
+          if (results.length >= 200) return;
+          if (e.name.startsWith(".")) continue;
+          if (SKIP.has(e.name)) continue;
+          const relPath = rel ? `${rel}/${e.name}` : e.name;
+          if (e.isDirectory()) walk(join(dir, e.name), relPath);
+          else if (e.name.toLowerCase().includes(q)) {
+            results.push({ name: relPath, type: "file", path: relPath });
+          }
+        }
+      };
+      walk(baseDir, dirParam);
+      sendJson(res, 200, { items: results });
+      return;
+    }
+    if (pathname === "/api/fs/list") {
+      // @ 选文件：浏览当前工作目录（dir 参数下钻），q 过滤当前层。
+      const q = (url.searchParams.get("q") ?? "").toLowerCase();
+      const dirParam = (url.searchParams.get("dir") ?? "").replace(/^\/+|\/+$/g, "");
+      const baseDir = resolve(service.cwd, dirParam);
+      // 防路径穿越：目标目录必须在 cwd 内。
+      if (!baseDir.startsWith(service.cwd)) {
+        sendError(res, 400, "Invalid dir.");
+        return;
+      }
+      const items: Array<{ name: string; type: "file" | "dir"; path: string }> = [];
+      try {
+        for (const entry of readdirSync(baseDir, { withFileTypes: true })) {
+          if (entry.name.startsWith(".")) continue;
+          if (q && !entry.name.toLowerCase().includes(q)) continue;
+          items.push({
+            name: entry.name,
+            type: entry.isDirectory() ? "dir" : "file",
+            path: dirParam ? `${dirParam}/${entry.name}` : entry.name,
+          });
+        }
+      } catch {
+        // 目录不可读时返回空列表
+      }
+      items.sort((a, b) =>
+        a.type === b.type ? a.name.localeCompare(b.name) : a.type === "dir" ? -1 : 1,
+      );
+      sendJson(res, 200, { cwd: service.cwd, dir: dirParam, items: items.slice(0, 60) });
+      return;
+    }
+    if (pathname === "/api/skills") {
+      // $ 选 skills：从 agent 目录 + 项目加载，标注来源（全局/项目）。
+      const agentDir = getAgentDir();
+      const { skills } = await loadSkills({
+        cwd: service.cwd,
+        agentDir,
+        skillPaths: [],
+        includeDefaults: true,
+      });
+      sendJson(res, 200, {
+        skills: skills.map((s) => ({
+          name: s.name,
+          description: s.description,
+          scope: s.baseDir.startsWith(agentDir) ? "global" : "project",
+        })),
+      });
       return;
     }
     if (pathname === "/api/state") {

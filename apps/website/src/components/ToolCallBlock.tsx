@@ -88,6 +88,14 @@ export const ToolCallBlock = memo(function ToolCallBlock({ part }: { part: UiToo
     else setHeight(0);
   }, [open, part.output, part.state]);
 
+  // 展开/折叠时强制外层滚动到底一次；再延迟一次覆盖展开动画结束后的最终高度。
+  useEffect(() => {
+    const scroll = () => document.dispatchEvent(new CustomEvent("pi:autoscroll"));
+    scroll();
+    const t = window.setTimeout(scroll, 260);
+    return () => window.clearTimeout(t);
+  }, [open]);
+
   // 执行中让输出区内部滚动跟随最新内容（外层滚动到此即可看到结尾）。
   useEffect(() => {
     if (part.state === "running" && outRef.current) {

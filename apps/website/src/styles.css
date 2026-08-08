@@ -1539,6 +1539,145 @@ body {
   display: block;
 }
 
+/* 排队消息就地编辑 */
+.queue-edit {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 3px 8px;
+  outline: none;
+}
+
+.queue-edit:focus {
+  border-color: var(--accent);
+}
+
+/* ------------------------------------------------------------------ */
+/* @ / $ 选择器浮层                                                     */
+/* ------------------------------------------------------------------ */
+
+.composer-row {
+  position: relative;
+}
+
+.picker {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-elev);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  padding: 6px;
+  animation: fade-in 0.15s ease;
+}
+
+.picker-loading {
+  padding: 10px 8px;
+  font-size: 12.5px;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.picker-path {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 6px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 4px;
+}
+
+.picker-path svg {
+  width: 13px;
+  height: 13px;
+  color: var(--amber);
+}
+
+.picker-name mark {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 2px;
+}
+
+.picker-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.picker-item.active {
+  background: var(--bg-active);
+}
+
+.picker-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+}
+
+.picker-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.picker-icon-dir {
+  color: var(--amber);
+}
+
+.picker-icon-file {
+  color: var(--text-dim);
+}
+
+.picker-icon-cmd {
+  color: var(--green);
+}
+
+.picker-icon-skill {
+  color: var(--accent);
+}
+
+.picker-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+
+.picker-hint {
+  font-size: 11px;
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+
 .btn-ghost {
   background: transparent;
   border: none;

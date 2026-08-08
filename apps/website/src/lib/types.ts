@@ -38,6 +38,7 @@ export type ClientMessage =
   | { type: "followUp"; text: string }
   | { type: "promoteToSteer"; text: string }
   | { type: "removeFromQueue"; text: string }
+  | { type: "editQueued"; text: string; newText: string }
   | { type: "abort" }
   | { type: "newSession"; cwd?: string }
   | { type: "resume"; path: string }

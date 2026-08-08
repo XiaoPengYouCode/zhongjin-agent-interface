@@ -77,6 +77,7 @@ export interface PiActions {
   followUp: (text: string) => void;
   promoteToSteer: (text: string) => void;
   removeFromQueue: (text: string) => void;
+  editQueued: (text: string, newText: string) => void;
   abort: () => void;
   newSession: (cwd?: string) => void;
   resume: (path: string) => void;
@@ -168,6 +169,7 @@ export function usePi() {
       followUp: (text) => send({ type: "followUp", text }),
       promoteToSteer: (text) => send({ type: "promoteToSteer", text }),
       removeFromQueue: (text) => send({ type: "removeFromQueue", text }),
+      editQueued: (text, newText) => send({ type: "editQueued", text, newText }),
       abort: () => send({ type: "abort" }),
       newSession: (cwd) => send({ type: "newSession", ...(cwd ? { cwd } : {}) }),
       resume: (path) => send({ type: "resume", path }),

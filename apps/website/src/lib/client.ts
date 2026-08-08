@@ -124,3 +124,43 @@ export async function postThinking(level: string): Promise<void> {
     body: JSON.stringify({ level }),
   });
 }
+
+export interface FsItem {
+  name: string;
+  type: "file" | "dir";
+  path: string;
+}
+
+export async function fetchFsItems(dir = "", signal?: AbortSignal): Promise<FsItem[]> {
+  const res = await fetch(`/api/fs/list?dir=${encodeURIComponent(dir)}`, { signal });
+  if (!res.ok) throw new Error(`Failed to list files (${res.status})`);
+  const data = (await res.json()) as { items: FsItem[] };
+  return data.items;
+}
+
+export async function fetchSearchItems(
+  q: string,
+  dir = "",
+  signal?: AbortSignal,
+): Promise<FsItem[]> {
+  const res = await fetch(
+    `/api/fs/search?q=${encodeURIComponent(q)}&dir=${encodeURIComponent(dir)}`,
+    { signal },
+  );
+  if (!res.ok) throw new Error(`Failed to search files (${res.status})`);
+  const data = (await res.json()) as { items: FsItem[] };
+  return data.items;
+}
+
+export interface SkillInfo {
+  name: string;
+  description: string;
+  scope: "global" | "project";
+}
+
+export async function fetchSkills(signal?: AbortSignal): Promise<SkillInfo[]> {
+  const res = await fetch("/api/skills", { signal });
+  if (!res.ok) throw new Error(`Failed to fetch skills (${res.status})`);
+  const data = (await res.json()) as { skills: SkillInfo[] };
+  return data.skills;
+}

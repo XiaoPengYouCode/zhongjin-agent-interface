@@ -116,6 +116,7 @@ export default function App() {
           onFollowUp={actions.followUp}
           onPromoteToSteer={actions.promoteToSteer}
           onRemoveFromQueue={actions.removeFromQueue}
+          onEditQueued={actions.editQueued}
           onAbort={actions.abort}
         />
       </main>

@@ -6,12 +6,14 @@ packages:
 catalogMode: prefer
 
 catalog:
+  "@leeoniya/ufuzzy": ^1.0.19
   "@types/diff": ^8.0.0
   "@types/node": ^24
   anser: ^2.3.5
   diff: ^9.0.0
   highlight.js: ^11.11.1
   react-arborist: ^3.16.0
+  react-icons: ^5.7.0
   typescript: ^7.0.2
   vite: npm:@voidzero-dev/vite-plus-core@0.2.8
   vite-plus: 0.2.8

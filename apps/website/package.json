@@ -11,11 +11,13 @@
     "test": "vp test"
   },
   "dependencies": {
+    "@leeoniya/ufuzzy": "catalog:",
     "anser": "catalog:",
     "diff": "catalog:",
     "highlight.js": "catalog:",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-icons": "catalog:",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1"
   },

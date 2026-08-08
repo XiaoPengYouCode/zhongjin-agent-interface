@@ -150,6 +150,13 @@ export class PiService {
     for (const f of followUp) if (f !== text) await this.session.followUp(f);
   }
 
+  /** Replace one queued message's text in place. */
+  async editQueued(text: string, newText: string): Promise<void> {
+    const { steering, followUp } = this.session.clearQueue();
+    for (const s of steering) await this.session.steer(s === text ? newText : s);
+    for (const f of followUp) await this.session.followUp(f === text ? newText : f);
+  }
+
   /** Attach (or re-attach) the event listener. */
   async bind(listener: (event: AgentSessionEvent) => void): Promise<void> {
     this.unsubscribe?.();

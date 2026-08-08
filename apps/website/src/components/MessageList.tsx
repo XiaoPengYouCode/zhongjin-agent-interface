@@ -61,6 +61,13 @@ export function MessageList({ messages }: { messages: UiMessage[] }) {
     }
   }, [messages, lastIsUser]);
 
+  // thinking / tool 块展开或折叠时，无条件下拉一次（由组件广播事件驱动）。
+  useEffect(() => {
+    const onAutoScroll = () => requestAnimationFrame(scrollToBottom);
+    document.addEventListener("pi:autoscroll", onAutoScroll);
+    return () => document.removeEventListener("pi:autoscroll", onAutoScroll);
+  }, []);
+
   // 输入框增高会压缩 .messages 的视口，底部内容被遮住；
   // 视口变矮时强制滚到底部，保持最新内容可见。
   useEffect(() => {
