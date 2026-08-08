@@ -42,6 +42,7 @@ export type ClientMessage =
   | { type: "removeFromQueue"; text: string }
   | { type: "editQueued"; text: string; newText: string }
   | { type: "demoteToFollowUp"; text: string }
+  | { type: "demoteToFollowUp"; text: string }
   | { type: "retract"; entryId: string }
   | { type: "editResend"; entryId: string; text: string }
   | { type: "abort" }

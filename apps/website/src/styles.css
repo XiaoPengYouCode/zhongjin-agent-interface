@@ -832,6 +832,10 @@ body {
   margin: 0 auto 28px;
   max-width: 950px;
   padding: 0 24px;
+  /* 屏外消息跳过布局/绘制：宽度变化（如开 DevTools）时只重排可见区域，
+     长会话的重排成本大幅降低。contain-intrinsic-size 提供尺寸估算。 */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
 }
 
 /* 新消息淡入（只动画最新一条，避免整列表重播） */
