@@ -1049,7 +1049,8 @@ body {
   overflow: hidden;
 }
 
-.tool-call details > summary {
+.tool-call-head {
+  width: 100%;
   list-style: none;
   display: flex;
   align-items: center;
@@ -1057,21 +1058,28 @@ body {
   padding: 10px 14px;
   cursor: pointer;
   user-select: none;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
 }
 
-.tool-call details > summary::-webkit-details-marker {
-  display: none;
-}
-
-.tool-call details > summary::before {
+.tool-call-head::before {
   content: "▸";
   color: var(--text-faint);
   font-size: 12px;
   transition: transform 0.15s;
+  flex-shrink: 0;
 }
 
-.tool-call details[open] > summary::before {
+.tool-call-head[aria-expanded="true"]::before {
   transform: rotate(90deg);
+}
+
+.tool-body-collapse {
+  overflow: hidden;
+  transition: height 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .tool-dot {

@@ -69,12 +69,24 @@ function ToolBody({ part }: { part: UiToolCall }) {
 export const ToolCallBlock = memo(function ToolCallBlock({ part }: { part: UiToolCall }) {
   const [open, setOpen] = useState(part.state === "running");
   const outRef = useRef<HTMLDivElement>(null);
+  const collapseRef = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number | undefined>(
+    part.state === "running" ? undefined : 0,
+  );
 
   // 执行中自动展开；结束后收起（与 thinking 一致），可手动点开查看。
   useEffect(() => {
     if (part.state === "running") setOpen(true);
     else setOpen(false);
   }, [part.state]);
+
+  // 展开/收起时把容器高度过渡到内容高度；展开期间内容变化也跟随重测。
+  useEffect(() => {
+    const el = collapseRef.current;
+    if (!el) return;
+    if (open) setHeight(el.scrollHeight);
+    else setHeight(0);
+  }, [open, part.output, part.state]);
 
   // 执行中让输出区内部滚动跟随最新内容（外层滚动到此即可看到结尾）。
   useEffect(() => {
@@ -85,30 +97,34 @@ export const ToolCallBlock = memo(function ToolCallBlock({ part }: { part: UiToo
 
   return (
     <div className={`tool-call tool-${part.state}`}>
-      <details open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
-        <summary>
-          <span className="tool-kind-icon">{toolIcon(part.name)}</span>
-          <span className="tool-name">{part.name}</span>
-          <span
-            className="tool-summary"
-            title={toolSummary(part.name, (part.args ?? {}) as Record<string, unknown>)}
-          >
-            {toolSummary(part.name, (part.args ?? {}) as Record<string, unknown>)}
-          </span>
-          <span className="tool-state">
-            {part.state === "running" ? (
-              <span className="spinner" aria-label="running" />
-            ) : part.state === "error" ? (
-              "✕"
-            ) : (
-              "✓"
-            )}
-          </span>
-        </summary>
+      <button className="tool-call-head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <span className="tool-kind-icon">{toolIcon(part.name)}</span>
+        <span className="tool-name">{part.name}</span>
+        <span
+          className="tool-summary"
+          title={toolSummary(part.name, (part.args ?? {}) as Record<string, unknown>)}
+        >
+          {toolSummary(part.name, (part.args ?? {}) as Record<string, unknown>)}
+        </span>
+        <span className="tool-state">
+          {part.state === "running" ? (
+            <span className="spinner" aria-label="running" />
+          ) : part.state === "error" ? (
+            "✕"
+          ) : (
+            "✓"
+          )}
+        </span>
+      </button>
+      <div
+        className="tool-body-collapse"
+        ref={collapseRef}
+        style={height === undefined ? undefined : { height }}
+      >
         <div className="tool-body" ref={outRef}>
           <ToolBody part={part} />
         </div>
-      </details>
+      </div>
     </div>
   );
 });

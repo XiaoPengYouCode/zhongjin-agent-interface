@@ -34,6 +34,31 @@ const cwd = resolve(process.env.PI_CWD ?? findWorkspaceRoot(packageDir));
 const webDist = resolve(process.env.WEB_DIST ?? join(serverRoot, "..", "website", "dist"));
 
 let service = await PiService.createNew(cwd);
+
+// sessionId → 存活实例。切换后旧实例仍在后台跑 agent，退出时统一释放；
+// 恢复同一会话时复用实例，避免同一会话文件被两个 runtime 同时写。
+const services = new Map<string, PiService>();
+services.set(service.session.sessionId, service);
+
+/**
+ * 切换到另一个会话：先解绑旧实例的事件监听，避免旧会话的流式事件
+ * 串进新会话窗口（旧 agent 继续后台运行，只是事件不再广播）。
+ */
+async function switchService(next: PiService): Promise<void> {
+  service.unbind();
+  service = next;
+  services.set(next.session.sessionId, next);
+  streaming = false;
+  await bindEvents();
+}
+
+/** 恢复会话：若已有存活实例（后台仍在跑），复用并重新绑定，而不是再开一个 runtime。 */
+async function openOrReuse(sessionFile: string): Promise<PiService> {
+  for (const s of services.values()) {
+    if (s.sessionFile === sessionFile) return s;
+  }
+  return PiService.open(sessionFile);
+}
 console.log(`[pi-web] agent cwd: ${cwd}`);
 console.log(`[pi-web] session: ${service.session.sessionFile ?? "(new, in-memory)"}`);
 const model = service.session.model;
@@ -137,16 +162,12 @@ async function handleClientMessage(ws: WebSocket, msg: ClientMessage) {
       return;
     case "newSession": {
       const dir = msg.cwd ? resolveSessionDir(msg.cwd) : undefined;
-      service = await PiService.createNew(dir ?? cwd);
-      streaming = false;
-      await bindEvents();
+      await switchService(await PiService.createNew(dir ?? cwd));
       send(ws, { type: "session", session: sessionState() });
       return;
     }
     case "resume": {
-      service = await PiService.open(msg.path);
-      streaming = false;
-      await bindEvents();
+      await switchService(await openOrReuse(msg.path));
       send(ws, { type: "session", session: sessionState() });
       return;
     }
@@ -311,18 +332,14 @@ const server = createServer(async (req, res) => {
     if (pathname === "/api/sessions" && req.method === "POST") {
       const body = (await readJsonBody(req)) as { cwd?: string };
       const dir = body.cwd ? resolveSessionDir(body.cwd) : undefined;
-      service = await PiService.createNew(dir ?? cwd);
-      streaming = false;
-      await bindEvents();
+      await switchService(await PiService.createNew(dir ?? cwd));
       sendJson(res, 200, sessionState());
       return;
     }
     if (pathname === "/api/resume" && req.method === "POST") {
       const body = (await readJsonBody(req)) as { path?: string };
       if (!body.path) return sendError(res, 400, "Missing `path`.");
-      service = await PiService.open(body.path);
-      streaming = false;
-      await bindEvents();
+      await switchService(await openOrReuse(body.path));
       sendJson(res, 200, sessionState());
       return;
     }
@@ -404,11 +421,16 @@ server.listen(PORT, HOST, () => {
   console.log(`[pi-web] listening on http://${HOST}:${PORT}`);
 });
 
-process.on("SIGINT", async () => {
-  await service.dispose();
-  process.exit(0);
-});
-process.on("SIGTERM", async () => {
-  await service.dispose();
-  process.exit(0);
-});
+async function shutdown(code: number) {
+  for (const s of services.values()) {
+    try {
+      await s.dispose();
+    } catch {
+      // 忽略单个实例的释放失败
+    }
+  }
+  process.exit(code);
+}
+
+process.on("SIGINT", () => void shutdown(0));
+process.on("SIGTERM", () => void shutdown(0));

@@ -153,8 +153,15 @@ export class PiService {
   /** Attach (or re-attach) the event listener. */
   async bind(listener: (event: AgentSessionEvent) => void): Promise<void> {
     this.unsubscribe?.();
+    this.unsubscribe = undefined;
     await this.session.bindExtensions({});
     this.unsubscribe = this.session.subscribe(listener);
+  }
+
+  /** Detach the event listener without stopping the in-flight agent run. */
+  unbind(): void {
+    this.unsubscribe?.();
+    this.unsubscribe = undefined;
   }
 
   async prompt(text: string): Promise<void> {
