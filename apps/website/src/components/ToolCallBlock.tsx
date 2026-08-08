@@ -119,7 +119,12 @@ export const ToolCallBlock = memo(function ToolCallBlock({ part }: { part: UiToo
       <div
         className="tool-body-collapse"
         ref={collapseRef}
-        style={height === undefined ? undefined : { height }}
+        style={{
+          height,
+          // 执行中禁用过渡：输出实时增长，外层滚动才能拿到真实高度；
+          // 手动开合和结束折叠时才走平滑动画。
+          transition: part.state === "running" ? "none" : undefined,
+        }}
       >
         <div className="tool-body" ref={outRef}>
           <ToolBody part={part} />

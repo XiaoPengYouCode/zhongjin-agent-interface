@@ -32,7 +32,6 @@ export const MessageBubble = memo(function MessageBubble({ message }: { message:
     );
   }
 
-  const lastTextIndex = message.parts.findLastIndex((p) => p.kind === "text");
   return (
     <div className="msg-row msg-assistant">
       <div className="msg-bubble msg-assistant-bubble">
@@ -43,7 +42,6 @@ export const MessageBubble = memo(function MessageBubble({ message }: { message:
           return (
             <div key={i} className="markdown-body">
               <Markdown text={part.text} />
-              {message.streaming && i === lastTextIndex && <span className="cursor" />}
             </div>
           );
         })}

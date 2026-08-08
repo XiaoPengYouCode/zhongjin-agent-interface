@@ -951,18 +951,6 @@ body {
   color: var(--accent);
 }
 
-.cursor::after {
-  content: "▍";
-  color: var(--accent);
-  animation: blink 1s steps(2) infinite;
-}
-
-@keyframes blink {
-  50% {
-    opacity: 0;
-  }
-}
-
 @keyframes pulse {
   50% {
     opacity: 0.4;
