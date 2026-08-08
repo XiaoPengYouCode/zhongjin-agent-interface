@@ -1,6 +1,6 @@
 # Pi Web
 
-基于 [Pi](https://github.com/earendil-works/pi) 做的网页版聊天界面。
+基于 [Pi](https://github.com/earendil-works/pi) 和 [Vite+](https://viteplus.dev/) 做的网页版聊天界面。
 
 ## 功能
 
