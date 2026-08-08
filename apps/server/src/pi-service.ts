@@ -131,6 +131,65 @@ export class PiService {
     return this.session.getSessionStats();
   }
 
+  // -------------------------------------------------------------------
+  // Message retract / edit-resend（基于会话树分支，不改写历史）
+  // -------------------------------------------------------------------
+
+  /** 从消息 content（string 或 text 块数组）提取纯文本。 */
+  private static contentText(content: unknown): string {
+    if (typeof content === "string") return content;
+    if (Array.isArray(content)) {
+      return content
+        .map((c) =>
+          c && typeof c === "object" && typeof (c as { text?: unknown }).text === "string"
+            ? (c as { text: string }).text
+            : "",
+        )
+        .join("");
+    }
+    return "";
+  }
+
+  /** 当前分支路径上的用户消息 entryId 序列（按顺序与 UI 消息配对）。 */
+  getUserMessageEntries(): Array<{ entryId: string; text: string }> {
+    const out: Array<{ entryId: string; text: string }> = [];
+    for (const e of this.session.sessionManager.getBranch()) {
+      if (e.type !== "message") continue;
+      const m = e.message;
+      if (m.role !== "user") continue;
+      out.push({ entryId: e.id, text: PiService.contentText(m.content) });
+    }
+    return out;
+  }
+
+  /** 分支后同步 agent 状态：与 compaction 后的刷新方式一致。 */
+  private refreshMessages(): void {
+    const ctx = this.session.sessionManager.buildSessionContext();
+    this.session.agent.state.messages = ctx.messages;
+  }
+
+  /** 把 leaf 回退到目标 entry 的前一条（目标消息及其后从当前路径移除，保留在树中）。 */
+  private async branchBefore(entryId: string): Promise<void> {
+    const branch = this.session.sessionManager.getBranch();
+    const idx = branch.findIndex((e) => e.id === entryId);
+    if (idx === -1) throw new Error(`Entry not found: ${entryId}`);
+    if (idx === 0)
+      this.session.sessionManager.resetLeaf(); // 编辑第一条：leaf 置空
+    else this.session.sessionManager.branch(branch[idx - 1].id);
+    this.refreshMessages();
+  }
+
+  /** 撤回：删除目标用户消息及之后的所有内容（旧路径保留为分支）。 */
+  async retract(entryId: string): Promise<void> {
+    await this.branchBefore(entryId);
+  }
+
+  /** 编辑 + 重发：回退到目标之前，以新文本重新发送并触发 agent。 */
+  async editResend(entryId: string, text: string): Promise<void> {
+    await this.branchBefore(entryId);
+    await this.session.prompt(text);
+  }
+
   /**
    * Promote one queued follow-up to a steering message (interrupt now).
    * The promoted text is taken out of the follow-up queue first, otherwise

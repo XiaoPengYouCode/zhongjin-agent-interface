@@ -37,16 +37,27 @@ const initialState: PiState = {
 
 function reducer(state: PiState, action: Action): PiState {
   switch (action.type) {
-    case "reset-session":
+    case "reset-session": {
+      const ui = messagesToUi(action.session.messages);
+      // 按顺序给 user 消息附加 entryId（与 messageEntries 配对）
+      const entries = action.session.messageEntries ?? [];
+      let ei = 0;
+      for (const m of ui) {
+        if (m.role === "user" && ei < entries.length) {
+          m.entryId = entries[ei].entryId;
+          ei += 1;
+        }
+      }
       return {
         ...state,
         session: action.session,
-        messages: messagesToUi(action.session.messages),
+        messages: ui,
         streaming: action.session.streaming,
         queuedFollowUps: action.session.queue.followUp,
         queuedSteers: action.session.queue.steering,
         error: null,
       };
+    }
     case "agent-event": {
       const event = action.event;
       const next: PiState = {
@@ -79,6 +90,8 @@ export interface PiActions {
   promoteToSteer: (text: string) => void;
   removeFromQueue: (text: string) => void;
   editQueued: (text: string, newText: string) => void;
+  retract: (entryId: string) => void;
+  editResend: (entryId: string, text: string) => void;
   abort: () => void;
   newSession: (cwd?: string) => void;
   resume: (path: string) => void;
@@ -198,6 +211,8 @@ export function usePi() {
       promoteToSteer: (text) => send({ type: "promoteToSteer", text }),
       removeFromQueue: (text) => send({ type: "removeFromQueue", text }),
       editQueued: (text, newText) => send({ type: "editQueued", text, newText }),
+      retract: (entryId) => send({ type: "retract", entryId }),
+      editResend: (entryId, text) => send({ type: "editResend", entryId, text }),
       abort: () => send({ type: "abort" }),
       newSession: (cwd) => send({ type: "newSession", ...(cwd ? { cwd } : {}) }),
       resume: (path) => send({ type: "resume", path }),

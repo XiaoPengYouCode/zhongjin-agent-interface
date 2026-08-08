@@ -34,7 +34,22 @@ const cwd = resolve(process.env.PI_CWD ?? findWorkspaceRoot(packageDir));
 // Built website to serve (single-process production mode), if present.
 const webDist = resolve(process.env.WEB_DIST ?? join(serverRoot, "..", "website", "dist"));
 
-let service = await PiService.createNew(cwd);
+/**
+ * 启动入口：优先恢复当前 cwd 下最近修改的会话（tsx watch 重启后回到原会话），
+ * 无历史会话时新建。
+ */
+async function createOrResumeLatest(cwd: string): Promise<PiService> {
+  try {
+    const sessions = await listSessions();
+    const latest = sessions.find((s) => s.cwd === cwd);
+    if (latest) return PiService.open(latest.path);
+  } catch {
+    // 恢复失败则新建
+  }
+  return PiService.createNew(cwd);
+}
+
+let service = await createOrResumeLatest(cwd);
 
 // sessionId → 存活实例。切换后旧实例仍在后台跑 agent，退出时统一释放；
 // 恢复同一会话时复用实例，避免同一会话文件被两个 runtime 同时写。
@@ -95,6 +110,8 @@ type ClientMessage =
   | { type: "promoteToSteer"; text: string }
   | { type: "removeFromQueue"; text: string }
   | { type: "editQueued"; text: string; newText: string }
+  | { type: "retract"; entryId: string }
+  | { type: "editResend"; entryId: string; text: string }
   | { type: "abort" }
   | { type: "newSession"; cwd?: string }
   | { type: "resume"; path: string }
@@ -136,6 +153,7 @@ function sessionState() {
     streaming,
     model: m ? { provider: m.provider, id: m.id, name: m.name } : null,
     messages: session.messages,
+    messageEntries: service.getUserMessageEntries(),
     queue: service.getQueue(),
   };
 }
@@ -190,6 +208,14 @@ async function handleClientMessage(ws: WebSocket, msg: ClientMessage) {
       return;
     case "editQueued":
       await service.editQueued(msg.text, msg.newText);
+      return;
+    case "retract":
+      await service.retract(msg.entryId);
+      send(ws, { type: "session", session: sessionState() });
+      return;
+    case "editResend":
+      await service.editResend(msg.entryId, msg.text);
+      send(ws, { type: "session", session: sessionState() });
       return;
     case "abort":
       await service.abort();

@@ -22,6 +22,8 @@ export interface SessionState {
   streaming: boolean;
   model: { provider: string; id: string; name: string } | null;
   messages: AgentMessage[];
+  /** 当前分支路径上的用户消息 entryId（按顺序与 messages 中的 user 消息配对）。 */
+  messageEntries?: Array<{ entryId: string; text: string }>;
   queue: { steering: string[]; followUp: string[] };
 }
 
@@ -39,6 +41,8 @@ export type ClientMessage =
   | { type: "promoteToSteer"; text: string }
   | { type: "removeFromQueue"; text: string }
   | { type: "editQueued"; text: string; newText: string }
+  | { type: "retract"; entryId: string }
+  | { type: "editResend"; entryId: string; text: string }
   | { type: "abort" }
   | { type: "newSession"; cwd?: string }
   | { type: "resume"; path: string }
@@ -157,6 +161,8 @@ export interface UiMessage {
   model?: string;
   timestamp?: number;
   streaming: boolean;
+  /** 服务端会话树中的 entry id（用户消息撤回/编辑用），运行中可能暂缺。 */
+  entryId?: string;
 }
 
 export type ConnectionState = "connecting" | "open" | "closed";

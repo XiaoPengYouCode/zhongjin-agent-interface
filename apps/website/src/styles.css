@@ -866,6 +866,76 @@ body {
   white-space: pre-wrap;
   word-break: break-word;
   font-size: 15px;
+  position: relative;
+}
+
+.msg-user-wrap {
+  max-width: 82%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+/* 用户消息 hover 操作（编辑/撤回） */
+.msg-user-actions {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 6px);
+  transform: translateY(-50%);
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+
+.msg-user-bubble:hover .msg-user-actions,
+.msg-user-actions:hover {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.msg-user-actions .icon-btn {
+  color: var(--text-dim);
+}
+
+.msg-user-actions .icon-btn:hover {
+  color: var(--text);
+}
+
+/* 用户消息就地编辑 */
+.msg-user-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-elev);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  color: var(--text);
+  padding: 10px 14px;
+  width: min(560px, 100%);
+}
+
+.msg-user-edit-input {
+  resize: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14.5px;
+  line-height: 1.6;
+  width: 100%;
+}
+
+.msg-user-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
 }
 
 .msg-assistant-bubble {

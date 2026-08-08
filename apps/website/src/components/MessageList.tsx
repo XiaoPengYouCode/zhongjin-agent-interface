@@ -2,7 +2,15 @@ import { useEffect, useRef } from "react";
 import { MessageBubble } from "./MessageBubble.tsx";
 import type { UiMessage } from "../lib/types.ts";
 
-export function MessageList({ messages }: { messages: UiMessage[] }) {
+export function MessageList({
+  messages,
+  onRetract,
+  onEditResend,
+}: {
+  messages: UiMessage[];
+  onRetract: (entryId: string) => void;
+  onEditResend: (entryId: string, text: string) => void;
+}) {
   const scroller = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   // 程序化滚动会触发 scroll 事件。记录我们设置的目标位置，
@@ -104,7 +112,7 @@ export function MessageList({ messages }: { messages: UiMessage[] }) {
   return (
     <div className="messages" ref={scroller} onScroll={onScroll}>
       {messages.map((m) => (
-        <MessageBubble key={m.key} message={m} />
+        <MessageBubble key={m.key} message={m} onRetract={onRetract} onEditResend={onEditResend} />
       ))}
     </div>
   );

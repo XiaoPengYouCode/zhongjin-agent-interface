@@ -106,7 +106,11 @@ export default function App() {
           </div>
         )}
 
-        <MessageList messages={state.messages} />
+        <MessageList
+          messages={state.messages}
+          onRetract={actions.retract}
+          onEditResend={actions.editResend}
+        />
 
         <Composer
           streaming={state.streaming}
