@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@leeoniya/ufuzzy": "catalog:",
+    "@tanstack/react-query": "catalog:",
     "anser": "catalog:",
     "diff": "catalog:",
     "highlight.js": "catalog:",

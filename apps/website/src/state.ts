@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchSessions, PiClient, postModel, postThinking } from "./lib/client.ts";
+import { qk } from "./lib/queries.ts";
 import { applyEvent, messagesToUi } from "./lib/messages.ts";
 import type {
   AgentSessionEvent,
   ClientMessage,
   ConnectionState,
-  SessionInfo,
   SessionState,
   UiMessage,
 } from "./lib/types.ts";
@@ -89,17 +90,22 @@ export interface PiActions {
 export function usePi() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [conn, setConn] = useState<ConnectionState>("connecting");
-  const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const clientRef = useRef<PiClient | null>(null);
+  const queryClient = useQueryClient();
+
+  // 会话列表：tanstack 缓存，WS 事件时 invalidate。
+  const { data: sessions = [] } = useQuery({
+    queryKey: qk.sessions,
+    queryFn: fetchSessions,
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
     const client = new PiClient();
     clientRef.current = client;
 
     const refresh = () => {
-      fetchSessions()
-        .then(setSessions)
-        .catch(() => {});
+      void queryClient.invalidateQueries({ queryKey: qk.sessions });
     };
 
     client.onMessage((msg) => {
@@ -121,7 +127,7 @@ export function usePi() {
     client.onState(setConn);
     client.connect();
     return () => client.close();
-  }, []);
+  }, [queryClient]);
 
   const send = useCallback((msg: ClientMessage) => {
     try {
@@ -143,25 +149,47 @@ export function usePi() {
     }
   }, []);
 
+  // 切换模型 / think 等级：mutation，成功后失效模型缓存并刷新会话状态。
+  const modelMutation = useMutation({
+    mutationFn: ({ provider, id }: { provider: string; id: string; sessionId: string }) =>
+      postModel(provider, id),
+    onSuccess: (_data, vars) => {
+      void queryClient.invalidateQueries({ queryKey: qk.models(vars.sessionId) });
+      void refreshSession();
+    },
+  });
+  const thinkingMutation = useMutation({
+    mutationFn: (level: string) => postThinking(level),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.models(state.session?.sessionId ?? "") });
+    },
+  });
+
   const setModel = useCallback(
     async (provider: string, id: string) => {
       try {
-        await postModel(provider, id);
+        await modelMutation.mutateAsync({
+          provider,
+          id,
+          sessionId: state.session?.sessionId ?? "",
+        });
       } catch (err) {
         dispatch({ type: "error", message: err instanceof Error ? err.message : String(err) });
       }
-      await refreshSession();
     },
-    [refreshSession],
+    [modelMutation, state.session?.sessionId],
   );
 
-  const setThinkingLevel = useCallback(async (level: string) => {
-    try {
-      await postThinking(level);
-    } catch (err) {
-      dispatch({ type: "error", message: err instanceof Error ? err.message : String(err) });
-    }
-  }, []);
+  const setThinkingLevel = useCallback(
+    async (level: string) => {
+      try {
+        await thinkingMutation.mutateAsync(level);
+      } catch (err) {
+        dispatch({ type: "error", message: err instanceof Error ? err.message : String(err) });
+      }
+    },
+    [thinkingMutation],
+  );
 
   const actions = useMemo<PiActions>(
     () => ({

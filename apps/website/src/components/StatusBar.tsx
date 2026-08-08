@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchModelPickerState, fetchStats } from "../lib/client.ts";
+import { qk } from "../lib/queries.ts";
 import { fmtTokens, folderName } from "../lib/format.ts";
-import type { ModelInfo, ModelPickerState, SessionStats } from "../lib/types.ts";
+import type { ModelInfo, SessionStats } from "../lib/types.ts";
 
 interface StatusBarProps {
   streaming: boolean;
@@ -63,25 +65,33 @@ function Popover({ trigger, card }: { trigger: ReactNode; card: ReactNode }) {
 // ---------------------------------------------------------------------------
 
 function ModelCard({
+  sessionId,
   onSetModel,
   onSetThinkingLevel,
 }: {
+  sessionId: string;
   onSetModel: StatusBarProps["onSetModel"];
   onSetThinkingLevel: StatusBarProps["onSetThinkingLevel"];
 }) {
-  const [state, setState] = useState<ModelPickerState | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    fetchModelPickerState()
-      .then((s) => {
-        setState(s);
-        if (s.current) setExpanded(new Set([s.current.provider]));
-      })
-      .catch(() => setState(null));
-  }, []);
+  // 模型列表/当前模型/think 等级：会话级缓存，切会话自动重取。
+  const { data: state, isError } = useQuery({
+    queryKey: qk.models(sessionId),
+    queryFn: fetchModelPickerState,
+    enabled: !!sessionId,
+  });
 
+  // 首次加载时默认展开当前模型所在组。
+  useEffect(() => {
+    if (state?.current && expanded.size === 0) setExpanded(new Set([state.current.provider]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.current?.provider]);
+
+  if (isError) {
+    return <div className="popover-empty">暂无数据</div>;
+  }
   if (!state) {
     return <div className="popover-empty">加载中…</div>;
   }
@@ -97,9 +107,8 @@ function ModelCard({
   const pick = async (m: ModelInfo) => {
     setBusy(`${m.provider}/${m.id}`);
     try {
+      // mutation 的 onSuccess 已失效模型缓存，useQuery 自动重取。
       await onSetModel(m.provider, m.id);
-      const fresh = await fetchModelPickerState();
-      setState(fresh);
     } finally {
       setBusy(null);
     }
@@ -107,7 +116,6 @@ function ModelCard({
 
   const setLevel = async (level: string) => {
     await onSetThinkingLevel(level);
-    setState((prev) => (prev ? { ...prev, thinking: { ...prev.thinking, current: level } } : prev));
   };
 
   const toggle = (provider: string) => {
@@ -220,7 +228,7 @@ function MiniRing({ percent }: { percent: number }) {
   );
 }
 
-function StatsCard({ stats, failed }: { stats: SessionStats | null; failed: boolean }) {
+function StatsCard({ stats, failed }: { stats?: SessionStats | null; failed: boolean }) {
   if (failed) {
     return <div className="popover-empty">暂无数据</div>;
   }
@@ -286,27 +294,20 @@ export function StatusBar({
   onSetModel,
   onSetThinkingLevel,
 }: StatusBarProps) {
-  const [stats, setStats] = useState<SessionStats | null>(null);
-  const [statsFailed, setStatsFailed] = useState(false);
+  const queryClient = useQueryClient();
 
-  // 挂载 + 每次任务结束后刷新用量。
-  useEffect(() => {
-    fetchStats()
-      .then((s) => {
-        setStats(s);
-        setStatsFailed(false);
-      })
-      .catch(() => setStatsFailed(true));
-  }, []);
+  // 用量是会话级别的：queryKey 带 sessionId，切换会话自动重取，缓存天然隔离。
+  const { data: stats, isError: statsError } = useQuery({
+    queryKey: ["stats", sessionId],
+    queryFn: fetchStats,
+    enabled: !!sessionId,
+  });
+
+  // 任务结束后失效缓存，触发重新拉取。
   useEffect(() => {
     if (streaming) return;
-    fetchStats()
-      .then((s) => {
-        setStats(s);
-        setStatsFailed(false);
-      })
-      .catch(() => {});
-  }, [streaming]);
+    void queryClient.invalidateQueries({ queryKey: ["stats", sessionId] });
+  }, [streaming, sessionId, queryClient]);
 
   const ctx = stats?.contextUsage;
   return (
@@ -327,7 +328,13 @@ export function StatusBar({
                 {model.name ?? model.id}
               </span>
             }
-            card={<ModelCard onSetModel={onSetModel} onSetThinkingLevel={onSetThinkingLevel} />}
+            card={
+              <ModelCard
+                sessionId={sessionId}
+                onSetModel={onSetModel}
+                onSetThinkingLevel={onSetThinkingLevel}
+              />
+            }
           />
         )}
         {sessionId && (
@@ -337,7 +344,7 @@ export function StatusBar({
                 <span className="session-folder">{folderName(cwd)}</span>
               </span>
             }
-            card={<StatsCard stats={stats} failed={statsFailed} />}
+            card={<StatsCard stats={stats} failed={statsError} />}
           />
         )}
         {ctx && (
@@ -348,7 +355,7 @@ export function StatusBar({
                 <span className="ctx-pct">{ctx.percent.toFixed(0)}%</span>
               </span>
             }
-            card={<StatsCard stats={stats} failed={statsFailed} />}
+            card={<StatsCard stats={stats} failed={statsError} />}
           />
         )}
       </span>
