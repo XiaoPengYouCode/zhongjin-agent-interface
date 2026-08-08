@@ -25,7 +25,3 @@ apps/website   React 前端（聊天 UI）
 apps/server    Node + Pi SDK 后端（WebSocket 流式推送事件）
 packages/utils 共享代码
 ```
-
-## 说明
-
-只监听本机，未做认证，不要暴露到公网。
