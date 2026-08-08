@@ -110,6 +110,7 @@ type ClientMessage =
   | { type: "promoteToSteer"; text: string }
   | { type: "removeFromQueue"; text: string }
   | { type: "editQueued"; text: string; newText: string }
+  | { type: "demoteToFollowUp"; text: string }
   | { type: "retract"; entryId: string }
   | { type: "editResend"; entryId: string; text: string }
   | { type: "abort" }
@@ -208,6 +209,9 @@ async function handleClientMessage(ws: WebSocket, msg: ClientMessage) {
       return;
     case "editQueued":
       await service.editQueued(msg.text, msg.newText);
+      return;
+    case "demoteToFollowUp":
+      await service.demoteToFollowUp(msg.text);
       return;
     case "retract":
       await service.retract(msg.entryId);
@@ -378,18 +382,6 @@ const server = createServer(async (req, res) => {
     }
     if (pathname === "/api/stats") {
       sendJson(res, 200, service.getStats());
-      return;
-    }
-    if (pathname === "/api/perf" && req.method === "POST") {
-      // 前端性能观测上报：直接输出到服务端日志，tail 即可查看。
-      const body = (await readJsonBody(req)) as {
-        entries?: Array<{ label?: string; dur?: number; ts?: number }>;
-      };
-      for (const e of body.entries ?? []) {
-        const t = new Date(e.ts ?? Date.now()).toISOString().slice(11, 19);
-        console.log(`[perf] ${t} ${e.label ?? "?"}: ${(e.dur ?? 0).toFixed(1)}ms`);
-      }
-      sendJson(res, 200, { ok: true });
       return;
     }
     if (pathname === "/api/fs/list") {

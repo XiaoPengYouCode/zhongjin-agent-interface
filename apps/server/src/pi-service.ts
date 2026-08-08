@@ -215,6 +215,14 @@ export class PiService {
     for (const f of followUp) await this.session.followUp(f === text ? newText : f);
   }
 
+  /** 把引导（steer）消息变回排队（follow-up）：两种模式平行，可双向切换。 */
+  async demoteToFollowUp(text: string): Promise<void> {
+    const { steering, followUp } = this.session.clearQueue();
+    for (const s of steering) if (s !== text) await this.session.steer(s);
+    for (const f of followUp) if (f !== text) await this.session.followUp(f);
+    await this.session.followUp(text);
+  }
+
   /** Attach (or re-attach) the event listener. */
   async bind(listener: (event: AgentSessionEvent) => void): Promise<void> {
     this.unsubscribe?.();

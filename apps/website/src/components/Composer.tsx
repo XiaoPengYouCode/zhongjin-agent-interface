@@ -22,6 +22,7 @@ interface ComposerProps {
   onPromoteToSteer: (text: string) => void;
   onRemoveFromQueue: (text: string) => void;
   onEditQueued: (text: string, newText: string) => void;
+  onDemoteToFollowUp: (text: string) => void;
   onAbort: () => void;
 }
 
@@ -54,6 +55,19 @@ const GUIDE_ICON = (
     strokeLinejoin="round"
   >
     <path d="M9 18l6-6-6-6" />
+  </svg>
+);
+
+const QUEUE_ICON = (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M4 6h16M4 12h10M4 18h7" />
   </svg>
 );
 
@@ -164,6 +178,7 @@ export function Composer({
   onPromoteToSteer,
   onRemoveFromQueue,
   onEditQueued,
+  onDemoteToFollowUp,
   onAbort,
 }: ComposerProps) {
   const [text, setText] = useState("");
@@ -171,7 +186,7 @@ export function Composer({
   const lastEsc = useRef(0);
 
   // 排队消息就地编辑
-  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editing, setEditing] = useState<{ list: "fu" | "st"; idx: number } | null>(null);
   const [editValue, setEditValue] = useState("");
 
   // @ / $ 选择器：useReducer 管 UI 状态，数据由 tanstack-query 提供。
@@ -310,14 +325,75 @@ export function Composer({
   };
 
   const saveEdit = () => {
-    if (editingIdx === null) return;
-    const target =
-      editingIdx < queuedFollowUps.length
-        ? queuedFollowUps[editingIdx]
-        : queuedSteers[editingIdx - queuedFollowUps.length];
+    if (!editing) return;
+    const target = editing.list === "fu" ? queuedFollowUps[editing.idx] : queuedSteers[editing.idx];
     const v = editValue.trim();
     if (v && v !== target) onEditQueued(target, v);
-    setEditingIdx(null);
+    setEditing(null);
+  };
+
+  const startEdit = (list: "fu" | "st", idx: number, text: string) => {
+    setEditing({ list, idx });
+    setEditValue(text);
+  };
+
+  /** 渲染一条队列项：排队/引导平行态，可双向切换，均可编辑/删除。 */
+  const renderQueueItem = (list: "fu" | "st", t: string, idx: number, key: string) => {
+    const isSteer = list === "st";
+    const isEditing = editing?.list === list && editing.idx === idx;
+    return isEditing ? (
+      <div className={`queue-item ${isSteer ? "queue-item-steer" : ""}`} key={key}>
+        <span className="queue-tag">{isSteer ? "引导" : "排队"}</span>
+        <input
+          className="queue-edit"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              saveEdit();
+            } else if (e.key === "Escape") {
+              setEditing(null);
+            }
+          }}
+          autoFocus
+        />
+        <button className="icon-btn" onClick={saveEdit} title="保存">
+          {CHECK_ICON}
+        </button>
+        <button className="icon-btn" onClick={() => setEditing(null)} title="取消">
+          {CLOSE_ICON}
+        </button>
+      </div>
+    ) : (
+      <div className={`queue-item ${isSteer ? "queue-item-steer" : ""}`} key={key}>
+        <span className="queue-tag">{isSteer ? "引导" : "排队"}</span>
+        <span className="queue-text">{t}</span>
+        <button className="icon-btn" onClick={() => startEdit(list, idx, t)} title="编辑">
+          {EDIT_ICON}
+        </button>
+        {isSteer ? (
+          <button
+            className="icon-btn"
+            onClick={() => onDemoteToFollowUp(t)}
+            title="变回排队，当前任务结束后发送"
+          >
+            {QUEUE_ICON}
+          </button>
+        ) : (
+          <button
+            className="icon-btn"
+            onClick={() => onPromoteToSteer(t)}
+            title="打断当前任务，立即发送"
+          >
+            {GUIDE_ICON}
+          </button>
+        )}
+        <button className="icon-btn" onClick={() => onRemoveFromQueue(t)} title="移出队列">
+          {TRASH_ICON}
+        </button>
+      </div>
+    );
   };
 
   const hasQueue = queuedSteers.length > 0 || queuedFollowUps.length > 0;
@@ -326,67 +402,8 @@ export function Composer({
     <div className="composer">
       {hasQueue && (
         <div className="queue-panel">
-          {queuedSteers.map((t, i) => (
-            <div className="queue-item queue-item-steer" key={`s${i}`}>
-              <span className="queue-tag">引导</span>
-              <span className="queue-text">{t}</span>
-              <button className="icon-btn" onClick={() => onRemoveFromQueue(t)} title="移出队列">
-                {TRASH_ICON}
-              </button>
-            </div>
-          ))}
-          {queuedFollowUps.map((t, i) =>
-            editingIdx === i ? (
-              <div className="queue-item" key={`f${i}`}>
-                <span className="queue-tag">排队</span>
-                <input
-                  className="queue-edit"
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      saveEdit();
-                    } else if (e.key === "Escape") {
-                      setEditingIdx(null);
-                    }
-                  }}
-                  autoFocus
-                />
-                <button className="icon-btn" onClick={saveEdit} title="保存">
-                  {CHECK_ICON}
-                </button>
-                <button className="icon-btn" onClick={() => setEditingIdx(null)} title="取消">
-                  {CLOSE_ICON}
-                </button>
-              </div>
-            ) : (
-              <div className="queue-item" key={`f${i}`}>
-                <span className="queue-tag">排队</span>
-                <span className="queue-text">{t}</span>
-                <button
-                  className="icon-btn"
-                  onClick={() => {
-                    setEditingIdx(i);
-                    setEditValue(t);
-                  }}
-                  title="编辑"
-                >
-                  {EDIT_ICON}
-                </button>
-                <button
-                  className="icon-btn"
-                  onClick={() => onPromoteToSteer(t)}
-                  title="打断当前任务，立即发送"
-                >
-                  {GUIDE_ICON}
-                </button>
-                <button className="icon-btn" onClick={() => onRemoveFromQueue(t)} title="移出队列">
-                  {TRASH_ICON}
-                </button>
-              </div>
-            ),
-          )}
+          {queuedSteers.map((t, i) => renderQueueItem("st", t, i, `s${i}`))}
+          {queuedFollowUps.map((t, i) => renderQueueItem("fu", t, i, `f${i}`))}
         </div>
       )}
       <div className="composer-row">

@@ -1,10 +1,16 @@
+import { Profiler, type ReactNode } from "react";
 import { Composer } from "./components/Composer.tsx";
 import { MessageList } from "./components/MessageList.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { StatusBar } from "./components/StatusBar.tsx";
+import { perf } from "./lib/perf.ts";
 import { useTheme, type ThemeMode } from "./lib/theme.ts";
 import { usePi } from "./state.ts";
-import type { ReactNode } from "react";
+
+/** 通用 Profiler 回调：渲染 >8ms 时上报。 */
+function onRender(id: string, phase: "mount" | "update" | "nested-update", actualDuration: number) {
+  perf.render(id, phase, actualDuration);
+}
 
 const THEME_ORDER: ThemeMode[] = ["system", "light", "dark"];
 const THEME_META: Record<ThemeMode, { icon: ReactNode; label: string }> = {
@@ -106,23 +112,28 @@ export default function App() {
           </div>
         )}
 
-        <MessageList
-          messages={state.messages}
-          onRetract={actions.retract}
-          onEditResend={actions.editResend}
-        />
+        <Profiler id="MessageList" onRender={onRender}>
+          <MessageList
+            messages={state.messages}
+            onRetract={actions.retract}
+            onEditResend={actions.editResend}
+          />
+        </Profiler>
 
-        <Composer
-          streaming={state.streaming}
-          queuedFollowUps={state.queuedFollowUps}
-          queuedSteers={state.queuedSteers}
-          onPrompt={actions.prompt}
-          onFollowUp={actions.followUp}
-          onPromoteToSteer={actions.promoteToSteer}
-          onRemoveFromQueue={actions.removeFromQueue}
-          onEditQueued={actions.editQueued}
-          onAbort={actions.abort}
-        />
+        <Profiler id="Composer" onRender={onRender}>
+          <Composer
+            streaming={state.streaming}
+            queuedFollowUps={state.queuedFollowUps}
+            queuedSteers={state.queuedSteers}
+            onPrompt={actions.prompt}
+            onFollowUp={actions.followUp}
+            onPromoteToSteer={actions.promoteToSteer}
+            onRemoveFromQueue={actions.removeFromQueue}
+            onEditQueued={actions.editQueued}
+            onDemoteToFollowUp={actions.demoteToFollowUp}
+            onAbort={actions.abort}
+          />
+        </Profiler>
       </main>
     </div>
   );
