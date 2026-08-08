@@ -213,10 +213,14 @@ async function handleClientMessage(ws: WebSocket, msg: ClientMessage) {
       await service.retract(msg.entryId);
       send(ws, { type: "session", session: sessionState() });
       return;
-    case "editResend":
-      await service.editResend(msg.entryId, msg.text);
+    case "editResend": {
+      // 先 branch 并立即推送清理后的会话状态（旧消息马上消失），
+      // 再启动 agent —— 避免新旧内容同时显示直到 agent 结束。
+      await service.retract(msg.entryId);
       send(ws, { type: "session", session: sessionState() });
+      await service.sendAsUser(msg.text);
       return;
+    }
     case "abort":
       await service.abort();
       return;

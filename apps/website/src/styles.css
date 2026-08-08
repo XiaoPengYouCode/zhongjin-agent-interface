@@ -855,7 +855,7 @@ body {
 }
 
 .msg-bubble {
-  max-width: 82%;
+  max-width: 100%;
 }
 
 .msg-user-bubble {
@@ -867,20 +867,33 @@ body {
   word-break: break-word;
   font-size: 15px;
   position: relative;
+  min-width: 60%; /* 短消息也保持足够的视觉宽度（1.5x） */
+}
+
+/* hover 桥：向右延伸覆盖按钮与气泡之间的间隙，
+   鼠标经过间隙时气泡仍保持 hover，操作按钮不会消失 */
+.msg-user-bubble::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  left: 100%;
+  width: 16px;
 }
 
 .msg-user-wrap {
-  max-width: 82%;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
 }
 
-/* 用户消息 hover 操作（编辑/撤回） */
+/* 用户消息 hover 操作（编辑/撤回）：定位在气泡右侧 */
 .msg-user-actions {
   position: absolute;
   top: 50%;
-  right: calc(100% + 6px);
+  left: 100%;
+  margin-left: 6px;
   transform: translateY(-50%);
   display: flex;
   gap: 2px;
@@ -891,6 +904,7 @@ body {
   opacity: 0;
   transition: opacity 0.15s;
   pointer-events: none;
+  z-index: 1; /* 高于气泡的 ::after 桥，保证按钮可点 */
 }
 
 .msg-user-bubble:hover .msg-user-actions,

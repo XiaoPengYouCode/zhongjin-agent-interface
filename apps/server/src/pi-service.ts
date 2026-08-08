@@ -184,9 +184,8 @@ export class PiService {
     await this.branchBefore(entryId);
   }
 
-  /** 编辑 + 重发：回退到目标之前，以新文本重新发送并触发 agent。 */
-  async editResend(entryId: string, text: string): Promise<void> {
-    await this.branchBefore(entryId);
+  /** 在已回退的分支上以新文本发送（配合 retract 使用，不重复 branch）。 */
+  async sendAsUser(text: string): Promise<void> {
     await this.session.prompt(text);
   }
 

@@ -113,6 +113,17 @@ export function usePi() {
     staleTime: 30_000,
   });
 
+  const refreshSession = useCallback(async () => {
+    try {
+      const res = await fetch("/api/state");
+      if (!res.ok) return;
+      const s = (await res.json()) as SessionState;
+      dispatch({ type: "reset-session", session: s });
+    } catch {
+      // 忽略临时失败
+    }
+  }, []);
+
   useEffect(() => {
     const client = new PiClient();
     clientRef.current = client;
@@ -130,7 +141,11 @@ export function usePi() {
           break;
         case "event":
           dispatch({ type: "agent-event", event: msg.event });
-          if (msg.event.type === "agent_end") refresh();
+          if (msg.event.type === "agent_end") {
+            refresh();
+            // 任务结束后刷新会话状态：让刚发的消息带上 entryId（可编辑/撤回）
+            void refreshSession();
+          }
           break;
         case "error":
           dispatch({ type: "error", message: msg.message });
@@ -140,25 +155,13 @@ export function usePi() {
     client.onState(setConn);
     client.connect();
     return () => client.close();
-  }, [queryClient]);
+  }, [queryClient, refreshSession]);
 
   const send = useCallback((msg: ClientMessage) => {
     try {
       clientRef.current?.send(msg);
     } catch (err) {
       dispatch({ type: "error", message: err instanceof Error ? err.message : String(err) });
-    }
-  }, []);
-
-  // 会话信息：文件夹名 + 统计卡片 + 模型选择
-  const refreshSession = useCallback(async () => {
-    try {
-      const res = await fetch("/api/state");
-      if (!res.ok) return;
-      const s = (await res.json()) as SessionState;
-      dispatch({ type: "reset-session", session: s });
-    } catch {
-      // 忽略临时失败
     }
   }, []);
 

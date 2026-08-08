@@ -81,10 +81,11 @@ function attachToolResult(messages: UiMessage[], result: ToolResultMessage): UiM
 /** Convert a full message list (from a resumed session) into UI messages. */
 export function messagesToUi(messages: AgentMessage[]): UiMessage[] {
   let out: UiMessage[] = [];
+  let idx = 0;
   for (const m of messages) {
     if (m.role === "user") {
       out.push({
-        key: nextKey(),
+        key: `u${idx}`, // 基于位置的稳定 key：全量重建时可复用已有 DOM
         role: "user",
         text: textOf(m.content),
         parts: [],
@@ -93,7 +94,7 @@ export function messagesToUi(messages: AgentMessage[]): UiMessage[] {
       });
     } else if (m.role === "assistant") {
       out.push({
-        key: nextKey(),
+        key: `u${idx}`,
         role: "assistant",
         text: "",
         parts: partsOf(m.content),
@@ -103,7 +104,9 @@ export function messagesToUi(messages: AgentMessage[]): UiMessage[] {
       });
     } else {
       out = attachToolResult(out, m);
+      continue;
     }
+    idx += 1;
   }
   return out;
 }
