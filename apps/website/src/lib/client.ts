@@ -67,7 +67,7 @@ export class PiClient {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg));
     } else {
-      throw new Error("Not connected");
+      throw new Error("连接已断开");
     }
   }
 

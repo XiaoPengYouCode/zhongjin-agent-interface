@@ -2,14 +2,26 @@ import { Markdown } from "./Markdown.tsx";
 import { ToolCallBlock } from "./ToolCallBlock.tsx";
 import type { UiMessage, UiPart } from "../lib/types.ts";
 
-function ThinkingBlock({ part }: { part: Extract<UiPart, { kind: "thinking" }> }) {
+function ThinkingBlock({
+  part,
+  streaming,
+}: {
+  part: Extract<UiPart, { kind: "thinking" }>;
+  streaming: boolean;
+}) {
   return (
-    <details className="thinking">
+    <details className="thinking" open={streaming}>
       <summary>
         <span className="thinking-dot" />
         <span className="tool-name">thinking</span>
       </summary>
-      <div className="thinking-text">{part.text}</div>
+      <div
+        className={
+          streaming ? "thinking-text thinking-text-live" : "thinking-text"
+        }
+      >
+        {part.text}
+      </div>
     </details>
   );
 }
@@ -28,7 +40,8 @@ export function MessageBubble({ message }: { message: UiMessage }) {
     <div className="msg-row msg-assistant">
       <div className="msg-bubble msg-assistant-bubble">
         {message.parts.map((part, i) => {
-          if (part.kind === "thinking") return <ThinkingBlock key={i} part={part} />;
+          if (part.kind === "thinking")
+            return <ThinkingBlock key={i} part={part} streaming={message.streaming} />;
           if (part.kind === "toolCall") return <ToolCallBlock key={part.id} part={part} />;
           return (
             <div key={i} className="markdown-body">

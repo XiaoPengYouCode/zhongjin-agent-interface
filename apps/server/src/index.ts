@@ -67,6 +67,7 @@ type ClientMessage =
   | { type: "steer"; text: string }
   | { type: "followUp"; text: string }
   | { type: "promoteToSteer"; text: string }
+  | { type: "removeFromQueue"; text: string }
   | { type: "abort" }
   | { type: "newSession"; cwd?: string }
   | { type: "resume"; path: string }
@@ -160,6 +161,9 @@ async function handleClientMessage(ws: WebSocket, msg: ClientMessage) {
       return;
     case "promoteToSteer":
       await service.promoteToSteer(msg.text);
+      return;
+    case "removeFromQueue":
+      await service.removeFromQueue(msg.text);
       return;
     case "abort":
       await service.abort();

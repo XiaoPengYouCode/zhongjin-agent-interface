@@ -159,7 +159,17 @@ export function Sidebar({
                 onClick={() => toggleGroup(group.cwd)}
               >
                 <span className={`group-chevron ${open ? "" : "collapsed"}`}>▾</span>
-                <span className="folder-icon">📁</span>
+                <svg
+                  className="folder-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                </svg>
                 <span className="folder-name">{folderLabel(group.cwd)}</span>
                 <span className="folder-count">{group.items.length}</span>
               </button>

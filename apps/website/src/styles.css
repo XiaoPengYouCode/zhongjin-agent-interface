@@ -1,5 +1,6 @@
 :root {
-  /* DeepSeek design tokens */
+  /* DeepSeek design tokens (dark) */
+  color-scheme: dark;
   --bg: #151517;
   --bg-side: #1a1a1c;
   --bg-elev: #1f1f22;
@@ -16,10 +17,34 @@
   --green: #34d399;
   --red: #f87171;
   --amber: #fbbf24;
+  --code-bg: rgba(0, 0, 0, 0.25);
+  --code-text: #c3cad9;
   --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   --sans:
     Inter, "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     system-ui, sans-serif;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f6f6f8;
+  --bg-side: #ffffff;
+  --bg-elev: #ffffff;
+  --bg-hover: rgba(0, 0, 0, 0.045);
+  --bg-active: rgba(0, 0, 0, 0.08);
+  --border: rgba(0, 0, 0, 0.12);
+  --border-soft: rgba(0, 0, 0, 0.07);
+  --text: #1c1c21;
+  --text-dim: #5b5b66;
+  --text-faint: #9a9aa4;
+  --accent: #3b6df5;
+  --accent-strong: #2f5de8;
+  --accent-soft: rgba(59, 109, 245, 0.12);
+  --green: #0ea371;
+  --red: #d93025;
+  --amber: #b45309;
+  --code-bg: #eef0f4;
+  --code-text: #2f333b;
 }
 
 * {
@@ -37,7 +62,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--sans);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
 }
@@ -83,7 +108,7 @@ body {
   background: var(--accent);
   color: #fff;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .brand-name {
@@ -98,7 +123,7 @@ body {
   color: var(--text);
   border-radius: 9px;
   padding: 7px 14px;
-  font-size: 13px;
+  font-size: 14px;
   font-family: inherit;
   cursor: pointer;
   transition:
@@ -121,7 +146,7 @@ body {
   border: none;
   color: var(--text-dim);
   padding: 6px 8px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   border-radius: 8px;
 }
@@ -141,7 +166,7 @@ body {
   border: 1px solid transparent;
   border-radius: 8px;
   color: var(--text);
-  font-size: 12.5px;
+  font-size: 13.5px;
   padding: 6px 10px;
   outline: none;
   transition: border-color 0.15s;
@@ -177,7 +202,7 @@ body {
 
 .session-empty {
   color: var(--text-faint);
-  font-size: 12.5px;
+  font-size: 13.5px;
   text-align: center;
   padding: 24px 0;
 }
@@ -192,7 +217,7 @@ body {
   align-items: center;
   gap: 7px;
   padding: 6px 10px;
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--text-dim);
   background: var(--bg-elev);
   border: 1px solid var(--border-soft);
@@ -213,7 +238,7 @@ body {
 }
 
 .group-chevron {
-  font-size: 9px;
+  font-size: 10px;
   transition: transform 0.12s;
   flex-shrink: 0;
   color: var(--text-faint);
@@ -224,7 +249,10 @@ body {
 }
 
 .folder-icon {
-  font-size: 11px;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--text-faint);
 }
 
 .folder-name {
@@ -238,7 +266,7 @@ body {
 }
 
 .folder-count {
-  font-size: 10px;
+  font-size: 11px;
   padding: 0 6px;
   border-radius: 999px;
   background: var(--bg-hover);
@@ -266,7 +294,7 @@ body {
 }
 
 .session-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -274,7 +302,7 @@ body {
 }
 
 .session-meta {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-faint);
   margin-top: 2px;
 }
@@ -282,7 +310,7 @@ body {
 .sidebar-foot {
   padding: 12px 14px;
   border-top: 1px solid var(--border-soft);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-dim);
 }
 
@@ -316,7 +344,7 @@ body {
 
 .cwd {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-faint);
   white-space: nowrap;
   overflow: hidden;
@@ -342,7 +370,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
-  font-size: 12.5px;
+  font-size: 13.5px;
   color: var(--text-dim);
 }
 
@@ -372,10 +400,24 @@ body {
 .model-chip,
 .session-chip {
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: 12.5px;
   padding: 3px 10px;
   border-radius: 999px;
   border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.theme-toggle {
+  font-size: 14px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.theme-toggle svg {
+  width: 15px;
+  height: 15px;
+  display: block;
   color: var(--text-dim);
 }
 
@@ -388,12 +430,12 @@ body {
   background: rgba(248, 113, 113, 0.1);
   border-bottom: 1px solid rgba(248, 113, 113, 0.3);
   color: #fca5a5;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .btn-xs {
   padding: 3px 9px;
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 /* ------------------------------------------------------------------ */
@@ -435,12 +477,12 @@ body {
 
 .empty-hint {
   margin: 0 0 6px;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text-dim);
 }
 
 .empty-sub {
-  font-size: 12.5px;
+  font-size: 13.5px;
   color: var(--text-faint);
   margin: 0;
 }
@@ -468,7 +510,7 @@ body {
   border-radius: 18px 18px 6px 18px;
   white-space: pre-wrap;
   word-break: break-word;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .msg-assistant-bubble {
@@ -477,7 +519,7 @@ body {
 }
 
 .markdown-body {
-  font-size: 14.5px;
+  font-size: 15.5px;
   color: var(--text);
 }
 
@@ -509,7 +551,7 @@ body {
 
 .markdown-body code {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 14px;
   background: var(--bg-hover);
   border: 1px solid var(--border-soft);
   border-radius: 5px;
@@ -529,7 +571,7 @@ body {
   background: none;
   border: none;
   padding: 0;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
 }
 
@@ -543,7 +585,7 @@ body {
 .markdown-body table {
   border-collapse: collapse;
   margin: 0 0 14px;
-  font-size: 13.5px;
+  font-size: 14.5px;
 }
 
 .markdown-body th,
@@ -583,14 +625,6 @@ body {
   display: inline-block;
 }
 
-.stream-hint {
-  max-width: 760px;
-  margin: -12px auto 16px;
-  padding: 0 24px;
-  font-size: 12px;
-  color: var(--text-faint);
-}
-
 /* Thinking */
 .thinking {
   margin: 0 0 14px;
@@ -603,7 +637,7 @@ body {
 .thinking summary {
   cursor: pointer;
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: 13.5px;
   color: var(--text-faint);
   user-select: none;
   display: flex;
@@ -618,7 +652,7 @@ body {
 .thinking summary::before {
   content: "▸";
   color: var(--text-faint);
-  font-size: 11px;
+  font-size: 12px;
   transition: transform 0.15s;
 }
 
@@ -636,12 +670,22 @@ body {
 
 .thinking-text {
   margin-top: 8px;
-  font-size: 13px;
+  font-size: 14px;
   font-style: italic;
   color: var(--text-dim);
   white-space: pre-wrap;
   max-height: 260px;
   overflow-y: auto;
+}
+
+/* 思考进行中：一行高的视窗，文字从底部向上滚动，显示最新一行 */
+.thinking-text-live {
+  height: 22px;
+  max-height: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 
 /* Tool calls */
@@ -670,7 +714,7 @@ body {
 .tool-call details > summary::before {
   content: "▸";
   color: var(--text-faint);
-  font-size: 11px;
+  font-size: 12px;
   transition: transform 0.15s;
 }
 
@@ -700,14 +744,14 @@ body {
 
 .tool-name {
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--text);
 }
 
 .tool-args {
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--text-faint);
   flex: 1;
   white-space: nowrap;
@@ -716,7 +760,7 @@ body {
 }
 
 .tool-state {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-faint);
   display: flex;
   align-items: center;
@@ -731,20 +775,20 @@ body {
   padding: 12px 14px;
   border-top: 1px solid var(--border-soft);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.55;
-  color: #c3cad9;
+  color: var(--code-text);
   max-height: 320px;
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--code-bg);
 }
 
 .tool-running-hint {
   padding: 8px 14px;
   border-top: 1px solid var(--border-soft);
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--text-faint);
 }
 
@@ -793,7 +837,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--bg-hover);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .queue-item-steer {
@@ -802,7 +846,7 @@ body {
 
 .queue-tag {
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: 11px;
   padding: 1px 6px;
   border-radius: 999px;
   background: var(--accent-soft);
@@ -842,25 +886,19 @@ body {
   border: none;
   color: var(--text);
   font-family: inherit;
-  font-size: 14.5px;
+  font-size: 15.5px;
   line-height: 1.5;
-  padding: 8px 0;
+  padding: 8px 10px 8px 0;
   outline: none;
-  max-height: 160px;
+  /* 随内容自动增高，封顶约 10 行（15.5px × 1.5 × 10 + 16px padding ≈ 248px） */
+  max-height: 248px;
 }
 
 .composer textarea::placeholder {
   color: var(--text-faint);
 }
 
-.composer-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-/* Round send button */
+/* Round send/stop button */
 .btn-send {
   width: 34px;
   height: 34px;
@@ -868,7 +906,6 @@ body {
   border: none;
   background: var(--accent);
   color: #fff;
-  font-size: 15px;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -876,6 +913,12 @@ body {
     opacity 0.15s,
     background 0.15s;
   flex-shrink: 0;
+}
+
+.btn-send svg {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
 .btn-send:hover:not(:disabled) {
@@ -887,12 +930,41 @@ body {
   cursor: not-allowed;
 }
 
+/* Icon-only action buttons in queue items */
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.icon-btn svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
 .btn-ghost {
   background: transparent;
   border: none;
   color: var(--text-dim);
   padding: 6px 10px;
-  font-size: 12.5px;
+  font-size: 13.5px;
   white-space: nowrap;
 }
 

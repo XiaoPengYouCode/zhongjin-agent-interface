@@ -100,6 +100,13 @@ export class PiService {
     for (const f of followUp) if (f !== text) await this.session.followUp(f);
   }
 
+  /** Remove one queued message (steering or follow-up) without delivering it. */
+  async removeFromQueue(text: string): Promise<void> {
+    const { steering, followUp } = this.session.clearQueue();
+    for (const s of steering) if (s !== text) await this.session.steer(s);
+    for (const f of followUp) if (f !== text) await this.session.followUp(f);
+  }
+
   /** Attach (or re-attach) the event listener. */
   async bind(listener: (event: AgentSessionEvent) => void): Promise<void> {
     this.unsubscribe?.();

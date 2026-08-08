@@ -74,9 +74,9 @@ function reducer(state: PiState, action: Action): PiState {
 
 export interface PiActions {
   prompt: (text: string) => void;
-  steer: (text: string) => void;
   followUp: (text: string) => void;
   promoteToSteer: (text: string) => void;
+  removeFromQueue: (text: string) => void;
   abort: () => void;
   newSession: (cwd?: string) => void;
   resume: (path: string) => void;
@@ -131,9 +131,9 @@ export function usePi() {
   const actions = useMemo<PiActions>(
     () => ({
       prompt: (text) => send({ type: "prompt", text }),
-      steer: (text) => send({ type: "steer", text }),
       followUp: (text) => send({ type: "followUp", text }),
       promoteToSteer: (text) => send({ type: "promoteToSteer", text }),
+      removeFromQueue: (text) => send({ type: "removeFromQueue", text }),
       abort: () => send({ type: "abort" }),
       newSession: (cwd) => send({ type: "newSession", ...(cwd ? { cwd } : {}) }),
       resume: (path) => send({ type: "resume", path }),

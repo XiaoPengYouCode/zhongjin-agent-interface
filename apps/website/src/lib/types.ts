@@ -37,6 +37,7 @@ export type ClientMessage =
   | { type: "steer"; text: string }
   | { type: "followUp"; text: string }
   | { type: "promoteToSteer"; text: string }
+  | { type: "removeFromQueue"; text: string }
   | { type: "abort" }
   | { type: "newSession"; cwd?: string }
   | { type: "resume"; path: string }
