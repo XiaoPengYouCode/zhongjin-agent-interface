@@ -40,37 +40,47 @@ function nextKey(): string {
   return `m${++keyCounter}`;
 }
 
-function attachToolResult(messages: UiMessage[], result: ToolResultMessage): void {
+function attachToolResult(messages: UiMessage[], result: ToolResultMessage): UiMessage[] {
   // Find the last tool call part with a matching id across recent assistant messages.
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
-    for (let j = msg.parts.length - 1; j >= 0; j--) {
-      const part = msg.parts[j];
-      if (part.kind === "toolCall" && part.id === result.toolCallId) {
-        const output = textOf(result.content);
-        part.output = output;
-        part.state = result.isError ? "error" : "done";
-        return;
-      }
-    }
+    const j = msg.parts.findIndex((p) => p.kind === "toolCall" && p.id === result.toolCallId);
+    if (j === -1) continue;
+    const output = textOf(result.content);
+    const state: "error" | "done" = result.isError ? "error" : "done";
+    const parts: UiPart[] = msg.parts.map((p, k) =>
+      k === j && p.kind === "toolCall" ? { ...p, output, state } : p,
+    );
+    const copy = messages.slice();
+    copy[i] = { ...msg, parts };
+    return copy;
   }
   // Orphaned result (e.g. detached tool call): render a synthetic part.
   const last = messages[messages.length - 1];
   if (last && last.role === "assistant") {
-    last.parts.push({
-      kind: "toolCall",
-      id: result.toolCallId,
-      name: result.toolName,
-      args: {},
-      output: textOf(result.content),
-      state: result.isError ? "error" : "done",
-    });
+    const copy = messages.slice();
+    copy[copy.length - 1] = {
+      ...last,
+      parts: [
+        ...last.parts,
+        {
+          kind: "toolCall",
+          id: result.toolCallId,
+          name: result.toolName,
+          args: {},
+          output: textOf(result.content),
+          state: result.isError ? "error" : "done",
+        },
+      ],
+    };
+    return copy;
   }
+  return messages;
 }
 
 /** Convert a full message list (from a resumed session) into UI messages. */
 export function messagesToUi(messages: AgentMessage[]): UiMessage[] {
-  const out: UiMessage[] = [];
+  let out: UiMessage[] = [];
   for (const m of messages) {
     if (m.role === "user") {
       out.push({
@@ -92,7 +102,7 @@ export function messagesToUi(messages: AgentMessage[]): UiMessage[] {
         streaming: false,
       });
     } else {
-      attachToolResult(out, m);
+      out = attachToolResult(out, m);
     }
   }
   return out;
@@ -102,7 +112,11 @@ export function messagesToUi(messages: AgentMessage[]): UiMessage[] {
 // Streaming event → UI state updates
 // ---------------------------------------------------------------------------
 
-/** Apply one agent event to the UI message list. Returns the updated list. */
+/**
+ * Apply one agent event to the UI message list. Returns the updated list.
+ * Only the affected message is cloned; unchanged messages keep their
+ * references so React.memo can skip re-rendering them.
+ */
 export function applyEvent(messages: UiMessage[], event: AgentSessionEvent): UiMessage[] {
   switch (event.type) {
     case "message_start": {
@@ -134,47 +148,37 @@ export function applyEvent(messages: UiMessage[], event: AgentSessionEvent): UiM
           },
         ];
       }
-      if (m.role === "toolResult") {
-        const copy = messages.map((x) => ({ ...x, parts: x.parts.map((p) => ({ ...p })) }));
-        attachToolResult(copy, m);
-        return copy;
-      }
+      if (m.role === "toolResult") return attachToolResult(messages, m);
       return messages;
     }
     case "message_update": {
       const m = event.message;
       if (m.role !== "assistant") return messages;
-      const copy = messages.map((x) => ({ ...x, parts: x.parts.map((p) => ({ ...p })) }));
-      const last = copy[copy.length - 1];
-      if (!last || last.role !== "assistant") return messages;
-      last.parts = partsOf(m.content);
-      last.model = m.model;
-      last.streaming = true;
-      return copy;
+      return withLastAssistant(messages, (last) => ({
+        ...last,
+        // 保留已累积的 tool 输出/状态，避免 partsOf 重建时被清空。
+        parts: mergeToolState(partsOf(m.content), last.parts),
+        model: m.model,
+        streaming: true,
+      }));
     }
     case "message_end": {
       const m = event.message;
       if (m.role === "assistant") {
-        const copy = messages.map((x) => ({ ...x, parts: x.parts.map((p) => ({ ...p })) }));
-        const last = copy[copy.length - 1];
-        if (last && last.role === "assistant") {
-          last.parts = partsOf(m.content);
-          last.model = m.model;
-          last.streaming = false;
-        }
-        return copy;
+        return withLastAssistant(messages, (last) => ({
+          ...last,
+          parts: mergeToolState(partsOf(m.content), last.parts),
+          model: m.model,
+          streaming: false,
+        }));
       }
-      if (m.role === "toolResult") {
-        const copy = messages.map((x) => ({ ...x, parts: x.parts.map((p) => ({ ...p })) }));
-        attachToolResult(copy, m);
-        return copy;
-      }
+      if (m.role === "toolResult") return attachToolResult(messages, m);
       return messages;
     }
     case "turn_end": {
-      const copy = messages.map((x) => ({ ...x, parts: x.parts.map((p) => ({ ...p })) }));
-      for (const result of event.toolResults) attachToolResult(copy, result);
-      return copy;
+      let next = messages;
+      for (const result of event.toolResults) next = attachToolResult(next, result);
+      return next;
     }
     case "tool_execution_start": {
       return markTool(messages, event.toolCallId, (p) => {
@@ -198,24 +202,51 @@ export function applyEvent(messages: UiMessage[], event: AgentSessionEvent): UiM
   }
 }
 
+/** Clone only the last message if it is an assistant message, apply fn, return new array. */
+function withLastAssistant(messages: UiMessage[], fn: (last: UiMessage) => UiMessage): UiMessage[] {
+  const i = messages.length - 1;
+  const last = messages[i];
+  if (!last || last.role !== "assistant") return messages;
+  const copy = messages.slice();
+  copy[i] = fn(last);
+  return copy;
+}
+
+/** Keep toolCall output/state from the current UI parts across partsOf rebuilds. */
+function mergeToolState(fresh: UiPart[], current: UiPart[]): UiPart[] {
+  return fresh.map((p) => {
+    if (p.kind !== "toolCall") return p;
+    const prev = current.find((c) => c.kind === "toolCall" && c.id === p.id);
+    // 状态/输出没变时复用原对象，保持引用稳定，让 React.memo 生效。
+    if (prev && prev.kind === "toolCall" && (prev.output !== p.output || prev.state !== p.state)) {
+      return { ...p, output: prev.output, state: prev.state };
+    }
+    return p;
+  });
+}
+
 function markTool(
   messages: UiMessage[],
   toolCallId: string,
   fn: (part: Extract<UiPart, { kind: "toolCall" }>) => void,
 ): UiMessage[] {
-  let changed = false;
-  const copy = messages.map((x) => {
-    if (x.role !== "assistant") return x;
-    const parts = x.parts.map((p) => {
-      if (p.kind !== "toolCall" || p.id !== toolCallId) return p;
-      const next = { ...p };
-      fn(next);
-      changed = true;
-      return next;
-    });
-    return parts === x.parts ? x : { ...x, parts };
+  const idx = messages.findIndex(
+    (x) =>
+      x.role === "assistant" && x.parts.some((p) => p.kind === "toolCall" && p.id === toolCallId),
+  );
+  if (idx === -1) return messages;
+  const msg = messages[idx];
+  if (msg.role !== "assistant") return messages;
+  const parts = msg.parts.map((p) => {
+    if (p.kind !== "toolCall" || p.id !== toolCallId) return p;
+    const next = { ...p };
+    fn(next);
+    return next;
   });
-  return changed ? copy : messages;
+  if (parts === msg.parts) return messages;
+  const copy = messages.slice();
+  copy[idx] = { ...msg, parts };
+  return copy;
 }
 
 // ---------------------------------------------------------------------------

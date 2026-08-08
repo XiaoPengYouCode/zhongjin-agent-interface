@@ -5,11 +5,45 @@ import type { UiMessage } from "../lib/types.ts";
 export function MessageList({ messages }: { messages: UiMessage[] }) {
   const scroller = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
+  // 程序化滚动触发 scroll 事件时，流式增长会让“距底距离”被高估，
+  // 从而把 stick 误置为 false。记录时间戳，窗口期内不参与判定。
+  const lastProgScroll = useRef(0);
+  const DEBUG = useRef(
+    typeof localStorage !== "undefined" && localStorage.getItem("pi-web-debug") === "1",
+  );
+
+  const logScroll = (msg: string, extra?: unknown) => {
+    if (DEBUG.current) console.debug(`[scroll] ${msg}`, extra ?? "");
+  };
+
+  const scrollToBottom = () => {
+    const el = scroller.current;
+    if (!el) return;
+    lastProgScroll.current = performance.now();
+    el.scrollTop = el.scrollHeight;
+    logScroll("programmatic scrollTop -> scrollHeight", {
+      scrollTop: el.scrollTop,
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+    });
+  };
 
   const onScroll = () => {
     const el = scroller.current;
     if (!el) return;
-    stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (performance.now() - lastProgScroll.current < 100) {
+      logScroll("ignore (programmatic window)");
+      return;
+    }
+    const next = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (next !== stick.current) {
+      logScroll(`stick ${stick.current} -> ${next}`, {
+        scrollTop: el.scrollTop,
+        scrollHeight: el.scrollHeight,
+        clientHeight: el.clientHeight,
+      });
+    }
+    stick.current = next;
   };
 
   // 最新一条是用户刚发的消息时，强制滚到底部（用户可能之前上滑读过内容）。
@@ -21,22 +55,20 @@ export function MessageList({ messages }: { messages: UiMessage[] }) {
     if (lastIsUser) stick.current = true;
     if (stick.current) {
       // 等布局稳定后再滚，避免读到旧高度。
-      requestAnimationFrame(() => {
-        if (el) el.scrollTop = el.scrollHeight;
-      });
+      requestAnimationFrame(scrollToBottom);
     }
   }, [messages, lastIsUser]);
 
-  // 输入框增高/变矮会改变 .messages 的视口高度，底部内容可能被遮住；
-  // 监听容器尺寸变化，贴底时跟随滚到底部。
+  // 输入框增高会压缩 .messages 的视口，底部内容被遮住；
+  // 视口变矮时强制滚到底部，保持最新内容可见。
   useEffect(() => {
     const el = scroller.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => {
-      if (!stick.current) return;
-      requestAnimationFrame(() => {
-        if (el) el.scrollTop = el.scrollHeight;
-      });
+    let prevH = 0;
+    const ro = new ResizeObserver((entries) => {
+      const h = entries[0]?.contentRect.height ?? 0;
+      if (prevH !== 0 && h < prevH) requestAnimationFrame(scrollToBottom);
+      prevH = h;
     });
     ro.observe(el);
     return () => ro.disconnect();

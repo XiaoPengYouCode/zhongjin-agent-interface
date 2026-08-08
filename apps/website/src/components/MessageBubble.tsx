@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Markdown } from "./Markdown.tsx";
 import { ToolCallBlock } from "./ToolCallBlock.tsx";
 import type { UiMessage, UiPart } from "../lib/types.ts";
@@ -15,18 +16,14 @@ function ThinkingBlock({
         <span className="thinking-dot" />
         <span className="tool-name">thinking</span>
       </summary>
-      <div
-        className={
-          streaming ? "thinking-text thinking-text-live" : "thinking-text"
-        }
-      >
+      <div className={streaming ? "thinking-text thinking-text-live" : "thinking-text"}>
         {part.text}
       </div>
     </details>
   );
 }
 
-export function MessageBubble({ message }: { message: UiMessage }) {
+export const MessageBubble = memo(function MessageBubble({ message }: { message: UiMessage }) {
   if (message.role === "user") {
     return (
       <div className="msg-row msg-user">
@@ -53,4 +50,4 @@ export function MessageBubble({ message }: { message: UiMessage }) {
       </div>
     </div>
   );
-}
+});

@@ -11,12 +11,16 @@
     "test": "vp test"
   },
   "dependencies": {
+    "anser": "catalog:",
+    "diff": "catalog:",
+    "highlight.js": "catalog:",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@types/diff": "catalog:",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^5.0.0",
