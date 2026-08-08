@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchSessions, PiClient, postModel, postThinking } from "./lib/client.ts";
 import { qk } from "./lib/queries.ts";
 import { applyEvent, messagesToUi } from "./lib/messages.ts";
+import { perf } from "./lib/perf.ts";
 import type {
   AgentSessionEvent,
   ClientMessage,
@@ -133,23 +134,28 @@ export function usePi() {
     };
 
     client.onMessage((msg) => {
-      switch (msg.type) {
-        case "hello":
-        case "session":
-          dispatch({ type: "reset-session", session: msg.session });
-          refresh();
-          break;
-        case "event":
-          dispatch({ type: "agent-event", event: msg.event });
-          if (msg.event.type === "agent_end") {
+      const p = perf.mark();
+      try {
+        switch (msg.type) {
+          case "hello":
+          case "session":
+            dispatch({ type: "reset-session", session: msg.session });
             refresh();
-            // 任务结束后刷新会话状态：让刚发的消息带上 entryId（可编辑/撤回）
-            void refreshSession();
-          }
-          break;
-        case "error":
-          dispatch({ type: "error", message: msg.message });
-          break;
+            break;
+          case "event":
+            dispatch({ type: "agent-event", event: msg.event });
+            if (msg.event.type === "agent_end") {
+              refresh();
+              // 任务结束后刷新会话状态：让刚发的消息带上 entryId（可编辑/撤回）
+              void refreshSession();
+            }
+            break;
+          case "error":
+            dispatch({ type: "error", message: msg.message });
+            break;
+        }
+      } finally {
+        perf.end(p, `ws:${msg.type}:${msg.type === "event" ? msg.event.type : ""}`);
       }
     });
     client.onState(setConn);

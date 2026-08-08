@@ -380,6 +380,18 @@ const server = createServer(async (req, res) => {
       sendJson(res, 200, service.getStats());
       return;
     }
+    if (pathname === "/api/perf" && req.method === "POST") {
+      // 前端性能观测上报：直接输出到服务端日志，tail 即可查看。
+      const body = (await readJsonBody(req)) as {
+        entries?: Array<{ label?: string; dur?: number; ts?: number }>;
+      };
+      for (const e of body.entries ?? []) {
+        const t = new Date(e.ts ?? Date.now()).toISOString().slice(11, 19);
+        console.log(`[perf] ${t} ${e.label ?? "?"}: ${(e.dur ?? 0).toFixed(1)}ms`);
+      }
+      sendJson(res, 200, { ok: true });
+      return;
+    }
     if (pathname === "/api/fs/list") {
       // @ 选文件：浏览当前工作目录（dir 参数下钻），q 过滤当前层。
       const q = (url.searchParams.get("q") ?? "").toLowerCase();
