@@ -175,7 +175,6 @@ export const MessageBubble = memo(function MessageBubble({
     return <UserMessage message={message} onRetract={onRetract} onEditResend={onEditResend} />;
   }
 
-  const lastTextIndex = message.parts.findLastIndex((p) => p.kind === "text");
   return (
     <div className="msg-row msg-assistant">
       <div className="msg-bubble msg-assistant-bubble">
@@ -183,13 +182,7 @@ export const MessageBubble = memo(function MessageBubble({
           if (part.kind === "thinking")
             return <ThinkingBlock key={i} part={part} streaming={message.streaming} />;
           if (part.kind === "toolCall") return <ToolCallBlock key={part.id} part={part} />;
-          const streaming = message.streaming && i === lastTextIndex;
-          return streaming ? (
-            // 流式中的最后文本段：纯文本渲染，避免每帧 markdown 全量解析
-            <div key={i} className="markdown-body streaming-text">
-              {part.text}
-            </div>
-          ) : (
+          return (
             <div key={i} className="markdown-body">
               <Markdown text={part.text} />
             </div>
