@@ -75,16 +75,15 @@ export const ToolCallBlock = memo(function ToolCallBlock({ part }: { part: UiToo
     part.state === "running" ? undefined : 0,
   );
 
-  // 执行中自动展开；结束后收起（与 thinking 一致），可手动点开查看。
+  // 执行中自动展开；结束后保持展开（不自动收起——连续工具调用时反复
+  // 展开/收起是“忽闪忽闪”的主因），用户可手动折叠。
   useEffect(() => {
     if (part.state === "running") setOpen(true);
-    else setOpen(false);
   }, [part.state]);
 
-  // 展开/收起时把容器高度过渡到内容高度。
-  // 折叠动画只由 open 驱动：done 后内容更新不再重测，
-  // 避免流式 message_update 把正在折叠的容器重新拉回展开（卡出空白）。
-  // 高度测量移到 rAF：避免每 chunk 同步读 scrollHeight（强制布局）。
+  // 高度：执行中不设高度（自然高度，输出实时增长无需逐 chunk 测量）；
+  // 非执行中展开时测量内容高度（供折叠动画使用），折叠时归零。
+  // 折叠优先于 running：执行中用户手动收起也应生效（否则收起后又被拽开）。
   useEffect(() => {
     const el = collapseRef.current;
     if (!el) return;
@@ -92,9 +91,13 @@ export const ToolCallBlock = memo(function ToolCallBlock({ part }: { part: UiToo
       setHeight(0);
       return;
     }
+    if (part.state === "running") {
+      setHeight(undefined);
+      return;
+    }
     const id = requestAnimationFrame(() => setHeight(el.scrollHeight));
     return () => cancelAnimationFrame(id);
-  }, [open, part.state === "running" ? part.output : null]);
+  }, [open, part.state]);
 
   // 展开/折叠时强制外层滚动到底一次；再延迟一次覆盖展开动画结束后的最终高度。
   useEffect(() => {
@@ -129,8 +132,8 @@ export const ToolCallBlock = memo(function ToolCallBlock({ part }: { part: UiToo
         ref={collapseRef}
         style={{
           height,
-          // 执行中禁用过渡：输出实时增长，外层滚动才能拿到真实高度；
-          // 手动开合和结束折叠时才走平滑动画。
+          // 执行中不设高度（自然高度），无需过渡；
+          // 手动开合（非执行中）才走平滑动画。
           transition: part.state === "running" ? "none" : undefined,
         }}
       >

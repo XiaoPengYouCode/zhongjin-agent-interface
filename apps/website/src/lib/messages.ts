@@ -49,7 +49,9 @@ function attachToolResult(messages: UiMessage[], result: ToolResultMessage): UiM
     const output = textOf(result.content);
     const state: "error" | "done" = result.isError ? "error" : "done";
     const parts: UiPart[] = msg.parts.map((p, k) =>
-      k === j && p.kind === "toolCall" ? { ...p, output, state } : p,
+      // 已累积的流式输出优先保留：turn_end 的 result 可能与 partial 累加不完全一致，
+      // 整体替换会触发 TerminalOutput 重建 DOM（内容闪一下）。
+      k === j && p.kind === "toolCall" ? { ...p, output: p.output || output, state } : p,
     );
     const copy = messages.slice();
     copy[i] = { ...msg, parts };

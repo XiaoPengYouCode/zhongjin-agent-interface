@@ -1,8 +1,7 @@
 :root {
   /* DeepSeek design tokens (dark) */
   color-scheme: dark;
-  --block-gap: 12px; /* 正文与工具/思考块之间的统一间距 */
-  --tool-gap: 0px; /* 工具/思考块之间的紧凑间距 */
+  --block-gap: 12px; /* 消息内所有相邻块（正文/思考/工具）之间的统一间距 */
   --bg: #151517;
   --bg-side: #1a1a1c;
   --bg-elev: #1f1f22;
@@ -1014,26 +1013,6 @@ body {
   color: var(--text);
 }
 
-/* 统一间距 token：正文与特殊块之间用 --block-gap，特殊块之间用 --tool-gap */
-.tool-call {
-  margin: 0 0 var(--tool-gap);
-}
-
-.thinking {
-  margin: 0 0 var(--tool-gap);
-}
-
-.msg-bubble > .markdown-body {
-  margin: 0 0 var(--tool-gap);
-}
-
-.msg-bubble > .markdown-body + .tool-call,
-.msg-bubble > .markdown-body + .thinking,
-.msg-bubble > .tool-call + .markdown-body,
-.msg-bubble > .thinking + .markdown-body {
-  margin-top: var(--block-gap);
-}
-
 .markdown-body > *:first-child {
   margin-top: 0;
 }
@@ -1156,26 +1135,27 @@ body {
 
 /* Thinking — 内敛无框：整体缩进，让正文保持最左突出 */
 .thinking {
-  margin: 0 0 var(--tool-gap) 20px;
+  margin: 0 0 0 20px;
 }
 
-.thinking summary {
-  cursor: pointer;
+.thinking-head {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 2px 6px;
+  border: none;
+  background: transparent;
   border-radius: 6px;
   font-family: var(--mono);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
   user-select: none;
 }
 
-.thinking summary:hover {
+.thinking-head:hover {
   background: var(--bg-hover);
-}
-
-.thinking summary::-webkit-details-marker {
-  display: none;
 }
 
 .thinking-icon {
@@ -1185,9 +1165,15 @@ body {
   color: var(--accent);
 }
 
-.thinking summary .tool-name {
+.thinking-head .tool-name {
   font-size: 11.5px;
   color: var(--text-dim);
+}
+
+/* 思考内容折叠容器：展开/收起与流式结束展开的平滑高度动画 */
+.thinking-collapse {
+  overflow: hidden;
+  transition: height 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .thinking-text {
@@ -1203,6 +1189,7 @@ body {
 /* 思考进行中：一行高的视窗，文字从底部向上滚动，显示最新一行 */
 .thinking-text-live {
   height: 20px;
+  margin: 0; /* 流式期间不占上下边距，折叠容器固定 20px 恰好容纳 */
   max-height: none;
   overflow: hidden;
   display: flex;
@@ -1212,7 +1199,22 @@ body {
 
 /* Tool calls — 无框行式：整体缩进（正文最左、工具为后台操作流） */
 .tool-call {
-  margin: 0 0 var(--tool-gap) 20px;
+  margin: 0 0 0 20px;
+}
+
+/* 统一间距：消息内所有相邻块（正文/思考/工具）间距一致（--block-gap）。
+   不再区分“正文↔块 / 块↔块”：流式期间 text part 出现/消失不会导致空隙跳变。
+   （工具块 20px 左缩进由各自 margin 提供，间距只由本条规则控制。） */
+.msg-bubble > .markdown-body + .markdown-body,
+.msg-bubble > .markdown-body + .tool-call,
+.msg-bubble > .markdown-body + .thinking,
+.msg-bubble > .tool-call + .markdown-body,
+.msg-bubble > .tool-call + .tool-call,
+.msg-bubble > .tool-call + .thinking,
+.msg-bubble > .thinking + .markdown-body,
+.msg-bubble > .thinking + .tool-call,
+.msg-bubble > .thinking + .thinking {
+  margin-top: var(--block-gap);
 }
 
 /* 含工具块的消息与其他消息之间统一 --block-gap 间距（正文-正文仍为 28px） */

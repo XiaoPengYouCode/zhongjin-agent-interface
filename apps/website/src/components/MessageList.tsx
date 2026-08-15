@@ -16,6 +16,9 @@ export function MessageList({
   // 程序化滚动会触发 scroll 事件：记录时间戳，窗口期内的事件视为程序化滚动，
   // 不参与 stick 判定（避免流式增长时以过期布局误判）。
   const lastProgScroll = useRef(0);
+  // 上一次记录的 scrollTop：scrollTop 明显变小 = 用户主动上滑（程序化滚动只会
+  // 变大或不变），该判定不依赖布局，content-visibility 估算不影响它。
+  const lastTop = useRef(0);
   const DEBUG = useRef(
     typeof localStorage !== "undefined" && localStorage.getItem("pi-web-debug") === "1",
   );
@@ -25,10 +28,11 @@ export function MessageList({
   };
 
   /** 滚到最新消息：用 scrollIntoView 定位真实元素（content-visibility 下
-   *  scrollHeight 是估算值，不可用；浏览器会为目标元素计算真实位置）。 */
+   *  scrollHeight 是估算值，不可用；浏览器会为目标元素计算真实位置）。
+   *  执行时二次确认 stick：rAF 排队期间用户可能已上滑，此时不能再拽回底部。 */
   const scrollToBottom = () => {
     const el = scroller.current;
-    if (!el) return;
+    if (!el || !stick.current) return;
     const last = el.lastElementChild as HTMLElement | null;
     if (last) {
       lastProgScroll.current = performance.now();
@@ -43,14 +47,22 @@ export function MessageList({
   const onScroll = () => {
     const el = scroller.current;
     if (!el) return;
-    if (performance.now() - lastProgScroll.current < 120) {
-      logScroll("ignore (programmatic)");
-      return;
-    }
-    // stick 判定：最后一条消息的底部距容器底部的距离（不依赖 scrollHeight，
-    // 与 content-visibility 的估算高度兼容）。
     const last = el.lastElementChild as HTMLElement | null;
     if (!last) return;
+    const prevTop = lastTop.current;
+    lastTop.current = el.scrollTop;
+    // 用户主动上滑：scrollTop 减小。立刻退出贴底（不等 120ms 窗口），
+    // 且后续 rAF 滚动因 scrollToBottom 内的 stick 复查而不再执行。
+    if (el.scrollTop < prevTop - 4) {
+      if (stick.current) logScroll("user scroll up -> unstick");
+      stick.current = false;
+      return;
+    }
+    // 程序化滚动的回声事件（窗口期内）：跳过判定，避免流式增长时
+    // 以过期布局把贴底误判为离开底部。
+    if (performance.now() - lastProgScroll.current < 120) return;
+    // stick 判定：最后一条消息的底部距容器底部的距离（不依赖 scrollHeight，
+    // 与 content-visibility 的估算高度兼容）。
     const next = el.getBoundingClientRect().bottom - last.getBoundingClientRect().bottom < 80;
     if (next !== stick.current) {
       logScroll(`stick ${stick.current} -> ${next}`);

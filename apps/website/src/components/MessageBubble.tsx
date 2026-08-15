@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { MdPsychology } from "react-icons/md";
 import { Markdown } from "./Markdown.tsx";
 import { ToolCallBlock } from "./ToolCallBlock.tsx";
@@ -69,21 +69,60 @@ function ThinkingBlock({
   part: Extract<UiPart, { kind: "thinking" }>;
   streaming: boolean;
 }) {
-  // thinking 出现（展开）与结束（折叠）时，强制外层滚动到底一次。
+  // 流式中强制展开（单行窗）；结束后保持展开，可手动收起；历史消息默认收起。
+  const [open, setOpen] = useState(streaming);
+  const everStreamed = useRef(streaming);
   useEffect(() => {
-    requestAutoScroll();
+    if (streaming) {
+      setOpen(true);
+      everStreamed.current = true;
+    } else if (everStreamed.current) {
+      // 流式结束：自动保持展开，避免 20px 单行窗瞬间消失造成跳动。
+      setOpen(true);
+    }
   }, [streaming]);
 
+  const collapseRef = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number | undefined>(streaming ? 20 : 0);
+
+  // 展开/收起/流式结束时把容器高度过渡到目标高度（流式期间固定 20px 单行窗，
+  // 结束后动画展开到全文高度，上限 260px 由 .thinking-text 的 max-height 控制）。
+  useEffect(() => {
+    const el = collapseRef.current;
+    if (!el) return;
+    if (!open) {
+      setHeight(0);
+      return;
+    }
+    const id = requestAnimationFrame(() => setHeight(streaming ? 20 : el.scrollHeight));
+    return () => cancelAnimationFrame(id);
+  }, [open, streaming]);
+
+  // 展开/收起/流式结束触发一次外层自动滚动（贴底时生效）。
+  useEffect(() => {
+    requestAutoScroll();
+  }, [streaming, open]);
+
   return (
-    <details className="thinking" open={streaming}>
-      <summary>
+    <div className="thinking">
+      <button className="thinking-head" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
         <MdPsychology className="thinking-icon" />
         <span className="tool-name">thinking</span>
-      </summary>
-      <div className={streaming ? "thinking-text thinking-text-live" : "thinking-text"}>
-        {part.text}
+      </button>
+      <div
+        className="thinking-collapse"
+        ref={collapseRef}
+        style={{
+          height,
+          // 流式期间固定单行窗高度，无需过渡；结束展开与手动开合走平滑动画。
+          transition: streaming ? "none" : undefined,
+        }}
+      >
+        <div className={streaming ? "thinking-text thinking-text-live" : "thinking-text"}>
+          {part.text}
+        </div>
       </div>
-    </details>
+    </div>
   );
 }
 
@@ -182,6 +221,9 @@ export const MessageBubble = memo(function MessageBubble({
           if (part.kind === "thinking")
             return <ThinkingBlock key={i} part={part} streaming={message.streaming} />;
           if (part.kind === "toolCall") return <ToolCallBlock key={part.id} part={part} />;
+          // 流式期间 content 里可能出现空的 text part：跳过，
+          // 否则会作为 0 高度的“幽灵块”在工具块之间制造/吞掉间距。
+          if (!part.text) return null;
           return (
             <div key={i} className="markdown-body">
               <Markdown text={part.text} streaming={message.streaming} />
