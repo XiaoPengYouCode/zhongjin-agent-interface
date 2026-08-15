@@ -184,7 +184,7 @@ export const MessageBubble = memo(function MessageBubble({
           if (part.kind === "toolCall") return <ToolCallBlock key={part.id} part={part} />;
           return (
             <div key={i} className="markdown-body">
-              <Markdown text={part.text} />
+              <Markdown text={part.text} streaming={message.streaming} />
             </div>
           );
         })}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchModelPickerState, fetchStats } from "../lib/client.ts";
@@ -284,7 +284,7 @@ function StatsCard({ stats, failed }: { stats?: SessionStats | null; failed: boo
 // Status bar
 // ---------------------------------------------------------------------------
 
-export function StatusBar({
+export const StatusBar = memo(function StatusBar({
   streaming,
   model,
   sessionId,
@@ -361,4 +361,4 @@ export function StatusBar({
       </span>
     </header>
   );
-}
+});

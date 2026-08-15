@@ -123,7 +123,16 @@ let streaming = false;
 
 function send(ws: WebSocket, payload: unknown) {
   if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(payload));
+    let text: string;
+    try {
+      // bigint 无法 JSON 序列化，统一转字符串；单次序列化（不 parse 回来）。
+      text = JSON.stringify(payload, (_key, value) =>
+        typeof value === "bigint" ? value.toString() : value,
+      );
+    } catch {
+      text = JSON.stringify({ type: "serialize_failed" });
+    }
+    ws.send(text);
   }
 }
 
@@ -131,16 +140,10 @@ function broadcast(payload: unknown) {
   for (const ws of clients) send(ws, payload);
 }
 
+// 事件对象直接透传（bigint 在 send 时统一处理），不再双重序列化——
+// 流式事件每 token 一条且携带全量消息，双重 JSON 是每 chunk 的 O(n) 开销。
 function serializeEvent(event: AgentSessionEvent): unknown {
-  try {
-    return JSON.parse(
-      JSON.stringify(event, (_key, value) =>
-        typeof value === "bigint" ? value.toString() : value,
-      ),
-    );
-  } catch {
-    return { type: event.type, serialized: false };
-  }
+  return event;
 }
 
 function sessionState() {

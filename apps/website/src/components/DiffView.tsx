@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { diffLines } from "diff";
 
 interface DiffViewProps {
@@ -32,12 +32,21 @@ function buildRows(oldText: string, newText: string): Row[] {
 
 export function DiffView({ oldText, newText, defaultMode = "split" }: DiffViewProps) {
   const [mode, setMode] = useState<"split" | "unified">(defaultMode);
-  const rows = buildRows(oldText, newText);
-
-  const oldLines = rows.filter((r) => r.oldLine !== null).length;
-  const newLines = rows.filter((r) => r.newLine !== null).length;
-  const removed = rows.filter((r) => r.type === "del").length;
-  const added = rows.filter((r) => r.type === "add").length;
+  // 同一对文本只 diff 一次：write/read 工具在流式期间反复重渲染时避免重复计算。
+  const rows = useMemo(() => buildRows(oldText, newText), [oldText, newText]);
+  const { oldLines, newLines, removed, added } = useMemo(() => {
+    let oldLines = 0;
+    let newLines = 0;
+    let removed = 0;
+    let added = 0;
+    for (const r of rows) {
+      if (r.oldLine !== null) oldLines += 1;
+      if (r.newLine !== null) newLines += 1;
+      if (r.type === "del") removed += 1;
+      else if (r.type === "add") added += 1;
+    }
+    return { oldLines, newLines, removed, added };
+  }, [rows]);
 
   let oldNo = 0;
   let newNo = 0;

@@ -1,4 +1,4 @@
-import { Profiler, type ReactNode } from "react";
+import { Profiler, useMemo, type ReactNode } from "react";
 import { Composer } from "./components/Composer.tsx";
 import { MessageList } from "./components/MessageList.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
@@ -72,6 +72,20 @@ export default function App() {
     setTheme(THEME_ORDER[(i + 1) % THEME_ORDER.length]);
   };
 
+  // 引用稳定：StatusBar 是 memo 的，themeToggle 每次新建会使 memo 失效。
+  const themeToggle = useMemo(
+    () => (
+      <button
+        className="btn btn-ghost btn-xs theme-toggle"
+        onClick={cycleTheme}
+        title={`主题：${THEME_META[theme].label}（点击切换）`}
+      >
+        {THEME_META[theme].icon}
+      </button>
+    ),
+    [theme],
+  );
+
   return (
     <div className="app">
       <Sidebar
@@ -90,15 +104,7 @@ export default function App() {
           sessionId={state.session?.sessionId ?? ""}
           sessionFile={state.session?.sessionFile ?? null}
           cwd={state.session?.cwd ?? ""}
-          themeToggle={
-            <button
-              className="btn btn-ghost btn-xs theme-toggle"
-              onClick={cycleTheme}
-              title={`主题：${THEME_META[theme].label}（点击切换）`}
-            >
-              {THEME_META[theme].icon}
-            </button>
-          }
+          themeToggle={themeToggle}
           onSetModel={actions.setModel}
           onSetThinkingLevel={actions.setThinkingLevel}
         />

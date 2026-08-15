@@ -21,7 +21,7 @@ function ToolBody({ part }: { part: UiToolCall }) {
           <span className="tool-prompt">$</span>
           <HighlightedCommand command={command} />
         </div>
-        {part.output && <TerminalOutput output={part.output} />}
+        {part.output && <TerminalOutput output={part.output} live={part.state === "running"} />}
         {part.state === "running" && !part.output && (
           <div className="tool-running-hint">执行中…</div>
         )}
@@ -84,6 +84,7 @@ export const ToolCallBlock = memo(function ToolCallBlock({ part }: { part: UiToo
   // 展开/收起时把容器高度过渡到内容高度。
   // 折叠动画只由 open 驱动：done 后内容更新不再重测，
   // 避免流式 message_update 把正在折叠的容器重新拉回展开（卡出空白）。
+  // 高度测量移到 rAF：避免每 chunk 同步读 scrollHeight（强制布局）。
   useEffect(() => {
     const el = collapseRef.current;
     if (!el) return;
@@ -91,7 +92,8 @@ export const ToolCallBlock = memo(function ToolCallBlock({ part }: { part: UiToo
       setHeight(0);
       return;
     }
-    setHeight(el.scrollHeight);
+    const id = requestAnimationFrame(() => setHeight(el.scrollHeight));
+    return () => cancelAnimationFrame(id);
   }, [open, part.state === "running" ? part.output : null]);
 
   // 展开/折叠时强制外层滚动到底一次；再延迟一次覆盖展开动画结束后的最终高度。
@@ -103,10 +105,13 @@ export const ToolCallBlock = memo(function ToolCallBlock({ part }: { part: UiToo
   }, [open]);
 
   // 执行中让输出区内部滚动跟随最新内容（外层滚动到此即可看到结尾）。
+  // 移入 rAF：避免每 chunk 同步写 scrollTop 强制布局。
   useEffect(() => {
-    if (part.state === "running" && outRef.current) {
-      outRef.current.scrollTop = outRef.current.scrollHeight;
-    }
+    if (part.state !== "running") return;
+    const id = requestAnimationFrame(() => {
+      if (outRef.current) outRef.current.scrollTop = outRef.current.scrollHeight;
+    });
+    return () => cancelAnimationFrame(id);
   }, [part.output, part.state]);
 
   return (

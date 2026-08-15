@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { pickFolder } from "../lib/fs.ts";
 import type { ConnectionState, SessionInfo } from "../lib/types.ts";
 
@@ -69,7 +69,7 @@ function NewSessionButton({ onPicked }: { onPicked: (cwd?: string) => void }) {
   );
 }
 
-export function Sidebar({
+export const Sidebar = memo(function Sidebar({
   sessions,
   currentFile,
   currentCwd,
@@ -220,4 +220,4 @@ export function Sidebar({
       </div>
     </aside>
   );
-}
+});

@@ -1109,6 +1109,36 @@ body {
   color: var(--accent);
 }
 
+/* 流式行级渲染：每行独立容器，保持行高稳定（DOM 只追加不重建） */
+.markdown-body .md-stream .md-line {
+  min-height: 1.6em;
+}
+
+/* 行级渲染时收窄块级间距，避免每行都带大 margin */
+.markdown-body .md-stream p {
+  margin: 0;
+}
+
+.markdown-body .md-stream ul,
+.markdown-body .md-stream ol {
+  margin: 0 0 4px;
+  padding-left: 24px;
+}
+
+.markdown-body .md-stream h1,
+.markdown-body .md-stream h2,
+.markdown-body .md-stream h3 {
+  margin: 14px 0 8px;
+}
+
+.markdown-body .md-stream pre {
+  margin: 0 0 8px;
+}
+
+.markdown-body .md-stream blockquote {
+  margin: 0 0 8px;
+}
+
 @keyframes pulse {
   50% {
     opacity: 0.4;

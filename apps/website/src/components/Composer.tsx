@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MdExtension } from "react-icons/md";
 import { fetchFsItems, fetchSearchItems, fetchSkills } from "../lib/client.ts";
@@ -169,7 +169,7 @@ const INITIAL_MENTION: MentionState = {
   index: 0,
 };
 
-export function Composer({
+export const Composer = memo(function Composer({
   streaming,
   queuedFollowUps,
   queuedSteers,
@@ -460,4 +460,4 @@ export function Composer({
       </div>
     </div>
   );
-}
+});

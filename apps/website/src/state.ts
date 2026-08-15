@@ -24,6 +24,7 @@ export interface PiState {
 type Action =
   | { type: "reset-session"; session: SessionState }
   | { type: "agent-event"; event: AgentSessionEvent }
+  | { type: "agent-events"; events: AgentSessionEvent[] }
   | { type: "error"; message: string }
   | { type: "clear-error" };
 
@@ -77,6 +78,16 @@ function reducer(state: PiState, action: Action): PiState {
         next.error = "会话压缩失败，请重试或开新会话。";
       }
       return next;
+    }
+    // 高频流式事件（message_update / tool_execution_update）经 rAF 合并后
+    // 批量应用：只影响 messages，逐个 apply（tool_execution_update 的增量
+    // 不能丢），一次 dispatch 一次渲染。
+    case "agent-events": {
+      let messages = state.messages;
+      for (const event of action.events) {
+        messages = applyEvent(messages, event);
+      }
+      return { ...state, messages };
     }
     case "error":
       return { ...state, error: action.message };
@@ -134,6 +145,27 @@ export function usePi() {
       void queryClient.invalidateQueries({ queryKey: qk.sessions });
     };
 
+    // ---- 高频流式事件（message_update / tool_execution_update）rAF 合并 ----
+    // 流式输出时这些事件每 token/chunk 一条；直接 dispatch 会以事件频率触发
+    // 全量 React 渲染（markdown 重解析 / DOM 重建）。合并到每帧一次：
+    // 渲染频率封顶到帧率，感知延迟最多 1 帧，流式大文档的成本大幅下降。
+    let pendingEvents: AgentSessionEvent[] | null = null;
+    let rafId = 0;
+    const flushNow = (): void => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = 0;
+      if (!pendingEvents) return;
+      const events = pendingEvents;
+      pendingEvents = null;
+      dispatch({ type: "agent-events", events });
+    };
+    const queueEvent = (event: AgentSessionEvent): void => {
+      (pendingEvents ??= []).push(event);
+      if (!rafId) rafId = requestAnimationFrame(flushNow);
+    };
+    const isHighFreq = (e: AgentSessionEvent): boolean =>
+      e.type === "message_update" || e.type === "tool_execution_update";
+
     client.onMessage((msg) => {
       const p = perf.mark();
       try {
@@ -143,14 +175,23 @@ export function usePi() {
             dispatch({ type: "reset-session", session: msg.session });
             refresh();
             break;
-          case "event":
-            dispatch({ type: "agent-event", event: msg.event });
-            if (msg.event.type === "agent_end") {
+          case "event": {
+            const event = msg.event;
+            if (isHighFreq(event)) {
+              queueEvent(event);
+              break;
+            }
+            // 非高频事件立即处理；agent_end 前先把本帧未 flush 的
+            // 流式事件同步应用，避免末尾 update 在 end 之后覆盖 streaming。
+            flushNow();
+            dispatch({ type: "agent-event", event });
+            if (event.type === "agent_end") {
               refresh();
               // 任务结束后刷新会话状态：让刚发的消息带上 entryId（可编辑/撤回）
               void refreshSession();
             }
             break;
+          }
           case "error":
             dispatch({ type: "error", message: msg.message });
             break;
