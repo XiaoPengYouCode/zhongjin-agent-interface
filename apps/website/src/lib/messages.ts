@@ -333,7 +333,9 @@ function markTool(
   toolCallId: string,
   fn: (part: Extract<UiPart, { kind: "toolCall" }>) => void,
 ): UiMessage[] {
-  const idx = messages.findIndex(
+  // 工具事件几乎总指向最后一条 assistant 消息：反向查找避免大会话下
+  // 每个 tool update 都从头遍历全部消息（O(n) → 期望 O(1)）。
+  const idx = messages.findLastIndex(
     (x) =>
       x.role === "assistant" && x.parts.some((p) => p.kind === "toolCall" && p.id === toolCallId),
   );

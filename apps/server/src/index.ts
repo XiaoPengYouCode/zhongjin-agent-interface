@@ -485,8 +485,12 @@ const server = createServer(async (req, res) => {
         "__pycache__",
       ]);
       const results: Array<{ name: string; type: "file"; path: string }> = [];
+      // 遍历上限：防止超大目录树（vendor/数据集等）同步阻塞事件循环。
+      let visited = 0;
+      const MAX_VISITED = 5_000;
       const walk = (dir: string, rel: string) => {
-        if (results.length >= 200) return;
+        if (results.length >= 200 || visited >= MAX_VISITED) return;
+        visited += 1;
         let entries;
         try {
           entries = readdirSync(dir, { withFileTypes: true });
