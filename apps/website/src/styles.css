@@ -346,6 +346,9 @@ body {
 
 .session-item {
   width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   text-align: left;
   border: none;
   background: transparent;
@@ -365,6 +368,8 @@ body {
 }
 
 .session-title {
+  flex: 1;
+  min-width: 0;
   font-size: 14px;
   font-weight: 500;
   color: var(--text-dim);
@@ -375,6 +380,34 @@ body {
 
 .session-item.active .session-title {
   color: var(--text);
+}
+
+/* 会话状态指示：运行中转圈，待查看蓝点，出错红点 */
+.session-indicator {
+  flex-shrink: 0;
+}
+
+.session-spinner {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.session-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.session-dot-review {
+  background: var(--accent);
+}
+
+.session-dot-error {
+  background: var(--red);
 }
 
 .sidebar-foot {

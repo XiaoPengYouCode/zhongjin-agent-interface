@@ -9,6 +9,7 @@ import type {
   ClientMessage,
   ConnectionState,
   SessionState,
+  SessionStatus,
   UiMessage,
 } from "./lib/types.ts";
 
@@ -116,6 +117,8 @@ export interface PiActions {
 export function usePi() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [conn, setConn] = useState<ConnectionState>("connecting");
+  // 左侧栏会话状态（服务端 WS session-status 推送 / hello 快照）。
+  const [statuses, setStatuses] = useState<Record<string, SessionStatus>>({});
   const clientRef = useRef<PiClient | null>(null);
   const queryClient = useQueryClient();
 
@@ -171,9 +174,17 @@ export function usePi() {
       try {
         switch (msg.type) {
           case "hello":
+            setStatuses(msg.statuses);
+            dispatch({ type: "reset-session", session: msg.session });
+            refresh();
+            break;
           case "session":
             dispatch({ type: "reset-session", session: msg.session });
             refresh();
+            break;
+          case "session-status":
+            // 增量合并：覆盖对应会话的 running/review/error。
+            setStatuses((prev) => ({ ...prev, ...msg.statuses }));
             break;
           case "event": {
             const event = msg.event;
@@ -275,5 +286,5 @@ export function usePi() {
     [send, setModel, setThinkingLevel],
   );
 
-  return { state, conn, sessions, actions };
+  return { state, conn, sessions, statuses, actions };
 }

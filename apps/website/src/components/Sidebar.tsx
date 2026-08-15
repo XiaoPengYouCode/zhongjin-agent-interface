@@ -1,9 +1,11 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import { pickFolder } from "../lib/fs.ts";
-import type { ConnectionState, SessionInfo } from "../lib/types.ts";
+import type { ConnectionState, SessionInfo, SessionStatus } from "../lib/types.ts";
 
 interface SidebarProps {
   sessions: SessionInfo[];
+  /** WS 实时推送的会话状态（按会话文件路径），优先于 sessions 查询里的快照。 */
+  statuses: Record<string, SessionStatus>;
   currentFile: string | null;
   currentCwd: string | null;
   conn: ConnectionState;
@@ -69,8 +71,24 @@ function NewSessionButton({ onPicked }: { onPicked: (cwd?: string) => void }) {
   );
 }
 
+function SessionIndicator({ status }: { status: SessionStatus }) {
+  if (status.running) {
+    return (
+      <span className="session-indicator session-spinner" title="运行中" aria-label="运行中" />
+    );
+  }
+  if (status.error) {
+    return <span className="session-indicator session-dot session-dot-error" title="运行出错" />;
+  }
+  if (status.review) {
+    return <span className="session-indicator session-dot session-dot-review" title="待查看" />;
+  }
+  return null;
+}
+
 export const Sidebar = memo(function Sidebar({
   sessions,
+  statuses,
   currentFile,
   currentCwd,
   conn,
@@ -191,15 +209,19 @@ export const Sidebar = memo(function Sidebar({
                 </button>
               </div>
               {open &&
-                group.items.map((s) => (
-                  <button
-                    key={s.path}
-                    className={`session-item ${s.path === currentFile ? "active" : ""}`}
-                    onClick={() => onResume(s.path)}
-                  >
-                    <div className="session-title">{titleOf(s)}</div>
-                  </button>
-                ))}
+                group.items.map((s) => {
+                  const status = statuses[s.path] ?? s.status;
+                  return (
+                    <button
+                      key={s.path}
+                      className={`session-item ${s.path === currentFile ? "active" : ""}`}
+                      onClick={() => onResume(s.path)}
+                    >
+                      <div className="session-title">{titleOf(s)}</div>
+                      {status && <SessionIndicator status={status} />}
+                    </button>
+                  );
+                })}
             </div>
           );
         })}

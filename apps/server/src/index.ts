@@ -56,6 +56,87 @@ let service = await createOrResumeLatest(cwd);
 const services = new Map<string, PiService>();
 services.set(service.session.sessionId, service);
 
+// ---------------------------------------------------------------------------
+// Session status (sidebar indicators: running / needs-review / error)
+// ---------------------------------------------------------------------------
+
+interface SessionStatus {
+  running: boolean;
+  /** 运行结束且最后一轮有工具调用（bash/write 等产出待确认），打开会话后清除。 */
+  review: boolean;
+  /** 运行以错误告终（最后一条 assistant 消息 error / stopReason=error）。 */
+  error: boolean;
+}
+
+const EMPTY_STATUS: SessionStatus = { running: false, review: false, error: false };
+
+/** sessionFile → status。进程内状态：重启后重新从会话文件/事件积累。 */
+const sessionStatuses = new Map<string, SessionStatus>();
+
+/** 运行刚结束（running → idle）：按最后一条 assistant 消息结算 review / error。 */
+function settleStatus(svc: PiService, st: SessionStatus): void {
+  const messages = svc.session.messages;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role !== "assistant") continue;
+    if (m.errorMessage || m.stopReason === "error") {
+      st.error = true;
+      st.review = false;
+      return;
+    }
+    const hasTool = Array.isArray(m.content) && m.content.some((c) => c.type === "toolCall");
+    st.review = hasTool;
+    st.error = false;
+    return;
+  }
+}
+
+/**
+ * 扫描所有存活实例的实时状态：running 直接读 session.isStreaming；
+ * 刚结束的会话结算 review/error。返回发生变化的 [file, status] 列表。
+ */
+function scanStatuses(): Array<[string, SessionStatus]> {
+  const changed: Array<[string, SessionStatus]> = [];
+  for (const svc of services.values()) {
+    const file = svc.sessionFile;
+    if (!file) continue;
+    const st = sessionStatuses.get(file) ?? { ...EMPTY_STATUS };
+    const running = svc.session.isStreaming;
+    if (running !== st.running) {
+      if (st.running && !running) settleStatus(svc, st);
+      st.running = running;
+      sessionStatuses.set(file, st);
+      changed.push([file, st]);
+    }
+  }
+  return changed;
+}
+
+/** 把变化的会话状态广播给所有客户端。 */
+function broadcastStatuses(changed: Array<[string, SessionStatus]>): void {
+  if (changed.length === 0) return;
+  broadcast({
+    type: "session-status",
+    statuses: Object.fromEntries(changed),
+  });
+}
+
+function statusSnapshot(): Record<string, SessionStatus> {
+  return Object.fromEntries(sessionStatuses);
+}
+
+/** 清除一个会话的 review/error（用户打开查看后），并广播变化。 */
+function clearSessionStatus(file: string): void {
+  const st = sessionStatuses.get(file);
+  if (!st || (!st.review && !st.error)) return;
+  st.review = false;
+  st.error = false;
+  broadcastStatuses([[file, st]]);
+}
+
+// 兜底扫描：后台会话（已切走、事件不再广播）结束/出错时，最多延迟 2s 更新。
+setInterval(() => broadcastStatuses(scanStatuses()), 2_000);
+
 /**
  * 切换到另一个会话：先解绑旧实例的事件监听，避免旧会话的流式事件
  * 串进新会话窗口（旧 agent 继续后台运行，只是事件不再广播）。
@@ -64,6 +145,8 @@ async function switchService(next: PiService): Promise<void> {
   service.unbind();
   service = next;
   services.set(next.session.sessionId, next);
+  // 用户打开该会话查看：清除待 review / 错误标记。
+  if (next.sessionFile) clearSessionStatus(next.sessionFile);
   await bindEvents();
 }
 
@@ -166,6 +249,8 @@ function sessionState() {
 async function bindEvents() {
   await service.bind((event) => {
     broadcast({ type: "event", event: serializeEvent(event) });
+    // 事件驱动即时扫描（agent_settled 到达时 isStreaming 已为 false，可立即结算）。
+    broadcastStatuses(scanStatuses());
   });
 }
 await bindEvents();
@@ -312,7 +397,12 @@ const server = createServer(async (req, res) => {
     }
     if (pathname === "/api/sessions") {
       const sessions = await listSessions();
-      sendJson(res, 200, { sessions });
+      sendJson(res, 200, {
+        sessions: sessions.map((s) => ({
+          ...s,
+          status: sessionStatuses.get(s.path) ?? { ...EMPTY_STATUS },
+        })),
+      });
       return;
     }
     if (pathname === "/api/models") {
@@ -522,7 +612,7 @@ server.on("upgrade", (req, socket, head) => {
 
 wss.on("connection", (ws) => {
   clients.add(ws);
-  send(ws, { type: "hello", session: sessionState() });
+  send(ws, { type: "hello", session: sessionState(), statuses: statusSnapshot() });
   console.log(`[pi-web] client connected (${clients.size} total)`);
 
   ws.on("message", (data) => {

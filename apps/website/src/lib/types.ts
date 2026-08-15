@@ -2,6 +2,13 @@
 // Wire protocol shared with apps/server (mirrors the server-side types).
 // ---------------------------------------------------------------------------
 
+/** 会话状态指示（左侧栏）：running=转圈，review=蓝点，error=红点。 */
+export interface SessionStatus {
+  running: boolean;
+  review: boolean;
+  error: boolean;
+}
+
 /** A persisted session as listed by Pi's SessionManager. Dates arrive as ISO strings. */
 export interface SessionInfo {
   path: string;
@@ -13,6 +20,8 @@ export interface SessionInfo {
   messageCount: number;
   firstMessage: string;
   allMessagesText: string;
+  /** 服务端实时状态（可能缺失，用 WS session-status 消息补齐）。 */
+  status?: SessionStatus;
 }
 
 export interface SessionState {
@@ -28,9 +37,10 @@ export interface SessionState {
 }
 
 export type ServerMessage =
-  | { type: "hello"; session: SessionState }
+  | { type: "hello"; session: SessionState; statuses: Record<string, SessionStatus> }
   | { type: "session"; session: SessionState }
   | { type: "event"; event: AgentSessionEvent }
+  | { type: "session-status"; statuses: Record<string, SessionStatus> }
   | { type: "error"; message: string }
   | { type: "pong" };
 

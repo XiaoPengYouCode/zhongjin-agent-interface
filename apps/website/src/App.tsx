@@ -64,7 +64,7 @@ const THEME_META: Record<ThemeMode, { icon: ReactNode; label: string }> = {
 };
 
 export default function App() {
-  const { state, conn, sessions, actions } = usePi();
+  const { state, conn, sessions, statuses, actions } = usePi();
   const [theme, setTheme] = useTheme();
 
   const cycleTheme = () => {
@@ -90,6 +90,7 @@ export default function App() {
     <div className="app">
       <Sidebar
         sessions={sessions}
+        statuses={statuses}
         currentFile={state.session?.sessionFile ?? null}
         currentCwd={state.session?.cwd ?? null}
         conn={conn}
