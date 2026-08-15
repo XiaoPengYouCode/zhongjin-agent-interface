@@ -19,7 +19,6 @@ export interface SessionInfo {
   modified: string;
   messageCount: number;
   firstMessage: string;
-  allMessagesText: string;
   /** 服务端实时状态（可能缺失，用 WS session-status 消息补齐）。 */
   status?: SessionStatus;
 }

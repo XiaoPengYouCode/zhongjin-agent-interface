@@ -12,6 +12,17 @@ function onRender(id: string, phase: "mount" | "update" | "nested-update", actua
   perf.render(id, phase, actualDuration);
 }
 
+/** 开发模式包 Profiler 测量渲染耗时；生产环境零开销直通（Profiler 每次 commit 都有收集成本）。 */
+function ProfilerWrap({ id, children }: { id: string; children: ReactNode }) {
+  return import.meta.env.DEV ? (
+    <Profiler id={id} onRender={onRender}>
+      {children}
+    </Profiler>
+  ) : (
+    <>{children}</>
+  );
+}
+
 const THEME_ORDER: ThemeMode[] = ["system", "light", "dark"];
 const THEME_META: Record<ThemeMode, { icon: ReactNode; label: string }> = {
   system: {
@@ -119,15 +130,15 @@ export default function App() {
           </div>
         )}
 
-        <Profiler id="MessageList" onRender={onRender}>
+        <ProfilerWrap id="MessageList">
           <MessageList
             messages={state.messages}
             onRetract={actions.retract}
             onEditResend={actions.editResend}
           />
-        </Profiler>
+        </ProfilerWrap>
 
-        <Profiler id="Composer" onRender={onRender}>
+        <ProfilerWrap id="Composer">
           <Composer
             streaming={state.streaming}
             queuedFollowUps={state.queuedFollowUps}
@@ -140,7 +151,7 @@ export default function App() {
             onDemoteToFollowUp={actions.demoteToFollowUp}
             onAbort={actions.abort}
           />
-        </Profiler>
+        </ProfilerWrap>
       </main>
     </div>
   );

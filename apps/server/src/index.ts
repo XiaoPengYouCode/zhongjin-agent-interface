@@ -6,7 +6,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { homedir } from "node:os";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
+import type { AgentSessionEvent, SessionInfo } from "@earendil-works/pi-coding-agent";
 import { WebSocket, WebSocketServer } from "ws";
 import { PiService, listSessions } from "./pi-service.ts";
 
@@ -55,6 +55,28 @@ let service = await createOrResumeLatest(cwd);
 // 恢复同一会话时复用实例，避免同一会话文件被两个 runtime 同时写。
 const services = new Map<string, PiService>();
 services.set(service.session.sessionId, service);
+
+// ---------------------------------------------------------------------------
+// Session listing (cached)
+// ---------------------------------------------------------------------------
+
+// listAll() 全量扫描磁盘（402+ 文件约 1.4s）。
+// 会话列表用短 TTL 缓存 + 关键事件失效，避免切换会话/agent 结束时反复全量扫描。
+let sessionsCache: { at: number; data: SessionInfo[] } | null = null;
+const SESSIONS_CACHE_TTL = 5_000;
+
+async function listSessionsCached(force = false): Promise<SessionInfo[]> {
+  if (!force && sessionsCache && performance.now() - sessionsCache.at < SESSIONS_CACHE_TTL) {
+    return sessionsCache.data;
+  }
+  const data = await listSessions();
+  sessionsCache = { at: performance.now(), data };
+  return data;
+}
+
+function invalidateSessionsCache(): void {
+  sessionsCache = null;
+}
 
 // ---------------------------------------------------------------------------
 // Session status (sidebar indicators: running / needs-review / error)
@@ -145,11 +167,12 @@ async function switchService(next: PiService): Promise<void> {
   service.unbind();
   service = next;
   services.set(next.session.sessionId, next);
+  // 切换可能产生/修改会话文件（新会话首次持久化等）：列表缓存失效。
+  invalidateSessionsCache();
   // 用户打开该会话查看：清除待 review / 错误标记。
   if (next.sessionFile) clearSessionStatus(next.sessionFile);
   await bindEvents();
 }
-
 /** 恢复会话：若已有存活实例（后台仍在跑），复用并重新绑定，而不是再开一个 runtime。 */
 async function openOrReuse(sessionFile: string): Promise<PiService> {
   for (const s of services.values()) {
@@ -253,6 +276,10 @@ function sessionState() {
 async function bindEvents() {
   await service.bind((event) => {
     broadcast({ type: "event", event: serializeEvent(event) });
+    // agent 结束 / compaction 会写会话文件：列表缓存失效，下次请求重新扫描。
+    if (event.type === "agent_end" || event.type === "compaction_end") {
+      invalidateSessionsCache();
+    }
     // 事件驱动即时扫描（agent_settled 到达时 isStreaming 已为 false，可立即结算）。
     broadcastStatuses(scanStatuses());
   });
@@ -305,12 +332,14 @@ async function handleClientMessage(ws: WebSocket, msg: ClientMessage) {
       return;
     case "retract":
       await service.retract(msg.entryId);
+      invalidateSessionsCache();
       send(ws, { type: "session", session: sessionState() });
       return;
     case "editResend": {
       // 先 branch 并立即推送清理后的会话状态（旧消息马上消失），
       // 再启动 agent —— 避免新旧内容同时显示直到 agent 结束。
       await service.retract(msg.entryId);
+      invalidateSessionsCache();
       send(ws, { type: "session", session: sessionState() });
       await service.sendAsUser(msg.text);
       return;
@@ -400,12 +429,16 @@ const server = createServer(async (req, res) => {
       return;
     }
     if (pathname === "/api/sessions") {
-      const sessions = await listSessions();
+      const sessions = await listSessionsCached();
       sendJson(res, 200, {
-        sessions: sessions.map((s) => ({
-          ...s,
-          status: sessionStatuses.get(s.path) ?? { ...EMPTY_STATUS },
-        })),
+        // allMessagesText（全文拼接）客户端不使用，剥离后列表体积从几十 MB 降到几百 KB。
+        sessions: sessions.map((s) => {
+          const { allMessagesText: _omitted, ...rest } = s;
+          return {
+            ...rest,
+            status: sessionStatuses.get(s.path) ?? { ...EMPTY_STATUS },
+          };
+        }),
       });
       return;
     }
