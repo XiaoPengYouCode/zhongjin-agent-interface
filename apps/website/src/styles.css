@@ -241,8 +241,17 @@ body {
 }
 
 /* DeepSeek 风格：分区标题应比其下条目更高、更醒目（父压子） */
+/* 组头行：折叠按钮 + 计数 + hover 新建按钮 */
+.session-group-head-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 6px;
+}
+
 .session-group-head {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -299,6 +308,41 @@ body {
   color: var(--text-faint);
   background: transparent;
   padding: 0;
+  flex-shrink: 0;
+}
+
+/* 组头 hover 新建会话按钮 */
+.group-new {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.15s,
+    background 0.15s,
+    color 0.15s;
+}
+
+.group-new svg {
+  width: 13px;
+  height: 13px;
+}
+
+.session-group-head-row:hover .group-new,
+.group-new:focus-visible {
+  opacity: 1;
+}
+
+.group-new:hover {
+  background: var(--bg-hover);
+  color: var(--text);
 }
 
 .session-item {

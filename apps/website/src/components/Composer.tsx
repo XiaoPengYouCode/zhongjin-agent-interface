@@ -437,6 +437,7 @@ export function Composer({
           placeholder="输入消息，Enter 发送，Shift+Enter 换行"
           rows={1}
           autoFocus
+          spellCheck={false}
         />
         <button
           className="btn-send"

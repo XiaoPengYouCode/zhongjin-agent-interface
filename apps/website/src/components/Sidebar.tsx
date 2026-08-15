@@ -152,26 +152,44 @@ export function Sidebar({
           const open = isGroupOpen(group.cwd);
           return (
             <div key={group.cwd} className="session-group">
-              <button
-                className="session-group-head"
-                title={group.cwd}
-                onClick={() => toggleGroup(group.cwd)}
-              >
-                <span className={`group-chevron ${open ? "" : "collapsed"}`}>▾</span>
-                <svg
-                  className="folder-icon"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+              <div className="session-group-head-row">
+                <button
+                  className="session-group-head"
+                  title={group.cwd}
+                  onClick={() => toggleGroup(group.cwd)}
                 >
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                </svg>
-                <span className="folder-name">{folderLabel(group.cwd)}</span>
+                  <span className={`group-chevron ${open ? "" : "collapsed"}`}>▾</span>
+                  <svg
+                    className="folder-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                  </svg>
+                  <span className="folder-name">{folderLabel(group.cwd)}</span>
+                </button>
                 <span className="folder-count">{group.items.length}</span>
-              </button>
+                <button
+                  className="group-new"
+                  onClick={() => onNew(group.cwd)}
+                  aria-label="在此文件夹新建会话"
+                  title="在此文件夹新建会话"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  >
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+              </div>
               {open &&
                 group.items.map((s) => (
                   <button
