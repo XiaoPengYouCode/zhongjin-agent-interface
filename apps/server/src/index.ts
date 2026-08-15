@@ -64,7 +64,6 @@ async function switchService(next: PiService): Promise<void> {
   service.unbind();
   service = next;
   services.set(next.session.sessionId, next);
-  streaming = false;
   await bindEvents();
 }
 
@@ -119,7 +118,6 @@ type ClientMessage =
   | { type: "ping" };
 
 const clients = new Set<WebSocket>();
-let streaming = false;
 
 function send(ws: WebSocket, payload: unknown) {
   if (ws.readyState === WebSocket.OPEN) {
@@ -154,7 +152,9 @@ function sessionState() {
     sessionFile: session.sessionFile ?? null,
     // The active session's own folder (from its header) is authoritative.
     cwd: session.sessionManager.getCwd() || service.cwd,
-    streaming,
+    // 真实流式状态：agent_end 后 compaction/retry/continuation 期间 SDK 仍在处理，
+    // 不能用事件驱动变量（agent_end 广播早于真正空闲），否则客户端会误判为可发送。
+    streaming: session.isStreaming,
     model: m ? { provider: m.provider, id: m.id, name: m.name } : null,
     messages: session.messages,
     messageEntries: service.getUserMessageEntries(),
@@ -165,8 +165,6 @@ function sessionState() {
 // Subscribe to the active session; re-bind after every session replacement.
 async function bindEvents() {
   await service.bind((event) => {
-    if (event.type === "agent_start") streaming = true;
-    else if (event.type === "agent_end") streaming = false;
     broadcast({ type: "event", event: serializeEvent(event) });
   });
 }
@@ -307,7 +305,7 @@ const server = createServer(async (req, res) => {
         ok: true,
         cwd: service.cwd,
         pid: process.pid,
-        streaming,
+        streaming: service.session.isStreaming,
         session: sessionState(),
       });
       return;

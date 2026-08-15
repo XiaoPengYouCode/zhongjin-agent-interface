@@ -184,9 +184,11 @@ export class PiService {
     await this.branchBefore(entryId);
   }
 
-  /** 在已回退的分支上以新文本发送（配合 retract 使用，不重复 branch）。 */
+  /** 在已回退的分支上以新文本发送（配合 retract 使用，不重复 branch）。
+   * 若 agent 仍在处理（如 agent_end 后的 compaction 窗口），以 steer 方式插入：
+   * 立即打断当前任务执行新指令，而不是抛 "already processing" 错误。 */
   async sendAsUser(text: string): Promise<void> {
-    await this.session.prompt(text);
+    await this.session.prompt(text, { streamingBehavior: "steer" });
   }
 
   /**
@@ -238,7 +240,9 @@ export class PiService {
   }
 
   async prompt(text: string): Promise<void> {
-    await this.session.prompt(text);
+    // 处理中发送时排队为 follow-up（与客户端“处理中发送即排队”的设计一致），
+    // 而不是让 SDK 抛 "Agent is already processing" 错误。
+    await this.session.prompt(text, { streamingBehavior: "followUp" });
   }
 
   async steer(text: string): Promise<void> {

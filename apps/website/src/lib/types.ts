@@ -108,6 +108,7 @@ export type AssistantMessageEvent =
 export type AgentSessionEvent =
   | { type: "agent_start" }
   | { type: "agent_end" }
+  | { type: "agent_settled" } // SDK 真正空闲（agent_end 后 compaction/retry 完成）
   | { type: "turn_start" }
   | { type: "turn_end"; message: AssistantMessage; toolResults: ToolResultMessage[] }
   | { type: "message_start"; message: AgentMessage }

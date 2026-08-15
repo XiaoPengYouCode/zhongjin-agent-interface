@@ -67,11 +67,11 @@ function reducer(state: PiState, action: Action): PiState {
         messages: applyEvent(state.messages, event),
       };
       if (event.type === "agent_start") next.streaming = true;
-      else if (event.type === "agent_end") {
-        next.streaming = false;
-        next.queuedFollowUps = [];
-        next.queuedSteers = [];
-      } else if (event.type === "queue_update") {
+      // agent_end 不能置 streaming=false：SDK 在 agent_end 广播后可能仍在
+      // compaction/retry/continuation（_isAgentRunActive 要到 agent_settled 才释放），
+      // 提前置 false 会让输入框走 prompt 路径并撞上 SDK 的 already-processing 错误。
+      else if (event.type === "agent_settled") next.streaming = false;
+      else if (event.type === "queue_update") {
         next.queuedFollowUps = [...event.followUp];
         next.queuedSteers = [...event.steering];
       } else if (event.type === "compaction_end" && event.aborted) {
