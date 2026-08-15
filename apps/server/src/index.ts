@@ -202,23 +202,27 @@ type ClientMessage =
 
 const clients = new Set<WebSocket>();
 
-function send(ws: WebSocket, payload: unknown) {
-  if (ws.readyState === WebSocket.OPEN) {
-    let text: string;
-    try {
-      // bigint 无法 JSON 序列化，统一转字符串；单次序列化（不 parse 回来）。
-      text = JSON.stringify(payload, (_key, value) =>
-        typeof value === "bigint" ? value.toString() : value,
-      );
-    } catch {
-      text = JSON.stringify({ type: "serialize_failed" });
-    }
-    ws.send(text);
+function serializePayload(payload: unknown): string {
+  try {
+    // bigint 无法 JSON 序列化，统一转字符串；单次序列化（不 parse 回来）。
+    return JSON.stringify(payload, (_key, value) =>
+      typeof value === "bigint" ? value.toString() : value,
+    );
+  } catch {
+    return JSON.stringify({ type: "serialize_failed" });
   }
 }
 
+function send(ws: WebSocket, payload: unknown) {
+  if (ws.readyState === WebSocket.OPEN) ws.send(serializePayload(payload));
+}
+
+/** 多客户端时只序列化一次：流式事件每 token 一条，重复 stringify 是纯浪费。 */
 function broadcast(payload: unknown) {
-  for (const ws of clients) send(ws, payload);
+  const text = serializePayload(payload);
+  for (const ws of clients) {
+    if (ws.readyState === WebSocket.OPEN) ws.send(text);
+  }
 }
 
 // 事件对象直接透传（bigint 在 send 时统一处理），不再双重序列化——
@@ -508,7 +512,7 @@ const server = createServer(async (req, res) => {
     if (pathname === "/api/skills") {
       // $ 选 skills：从 agent 目录 + 项目加载，标注来源（全局/项目）。
       const agentDir = getAgentDir();
-      const { skills } = await loadSkills({
+      const { skills } = loadSkills({
         cwd: service.cwd,
         agentDir,
         skillPaths: [],

@@ -41,16 +41,13 @@ const initialState: PiState = {
 function reducer(state: PiState, action: Action): PiState {
   switch (action.type) {
     case "reset-session": {
-      const ui = messagesToUi(action.session.messages);
-      // 按顺序给 user 消息附加 entryId（与 messageEntries 配对）
-      const entries = action.session.messageEntries ?? [];
-      let ei = 0;
-      for (const m of ui) {
-        if (m.role === "user" && ei < entries.length) {
-          m.entryId = entries[ei].entryId;
-          ei += 1;
-        }
-      }
+      // 传入旧列表与 entries：未变化的消息/part 引用被复用，
+      // 避免快照重建（agent_end 后 refreshSession 等）触发全列表重渲染。
+      const ui = messagesToUi(
+        action.session.messages,
+        state.messages,
+        action.session.messageEntries,
+      );
       return {
         ...state,
         session: action.session,

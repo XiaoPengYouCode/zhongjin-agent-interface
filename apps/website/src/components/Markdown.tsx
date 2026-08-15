@@ -1,4 +1,4 @@
-import { memo, useRef, type ReactNode } from "react";
+import { memo, useMemo, useRef, type ReactNode } from "react";
 import MdRenderer from "marked-react";
 
 /**
@@ -50,10 +50,12 @@ function StreamingMarkdown({ text }: { text: string }) {
   }
 
   const live = lines[lines.length - 1];
+  // live 行内容没变时不重新解析 markdown（输出停顿、其他 part 更新时跳过）。
+  const liveNode = useMemo(() => (live ? renderLine(live) : null), [live]);
   return (
     <div className="md-stream">
       {cached}
-      <div className="md-line md-live">{live ? renderLine(live) : null}</div>
+      <div className="md-line md-live">{liveNode}</div>
     </div>
   );
 }
