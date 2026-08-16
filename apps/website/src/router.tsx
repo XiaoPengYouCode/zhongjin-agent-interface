@@ -1,5 +1,11 @@
 import { createContext, useContext } from "react";
-import { createRootRoute, createRoute, createRouter, Outlet } from "@tanstack/react-router";
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  lazyRouteComponent,
+  Outlet,
+} from "@tanstack/react-router";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { usePi, type PiActions, type PiState } from "./state.ts";
 import { useTheme, type ThemeMode } from "./lib/theme.ts";
@@ -51,13 +57,13 @@ const rootRoute = createRootRoute({ component: Shell });
 const chatRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: () => import("./components/ChatView.tsx").then((m) => m.ChatView),
+  component: lazyRouteComponent(() => import("./components/ChatView.tsx"), "ChatView"),
 });
 
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
-  component: () => import("./components/Settings.tsx").then((m) => m.SettingsView),
+  component: lazyRouteComponent(() => import("./components/Settings.tsx"), "SettingsView"),
 });
 
 const routeTree = rootRoute.addChildren([chatRoute, settingsRoute]);
