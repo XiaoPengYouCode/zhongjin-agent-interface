@@ -185,6 +185,65 @@ export const Composer = memo(function Composer({
   const taRef = useRef<HTMLTextAreaElement>(null);
   const lastEsc = useRef(0);
 
+  // ---- 输入历史（↑↓ 回溯，shell 体验）----
+  // 发送历史持久化到 localStorage；按 ↑ 时先把当前未发送内容存入 draft，
+  // 回到最新时恢复 —— 输入中未发送的文字不会丢。
+  const HISTORY_KEY = "pi-web-input-history";
+  const HISTORY_MAX = 50;
+  const [history, setHistory] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      const arr = raw ? (JSON.parse(raw) as unknown) : [];
+      return Array.isArray(arr) ? (arr as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
+  const historyRef = useRef(history);
+  /** 历史游标：-1 = 正常编辑（不在历史中）；≥0 = history 中的位置。 */
+  const posRef = useRef(-1);
+  /** 按 ↑ 时保存的当前未发送内容，按 ↓ 回到底部时恢复。 */
+  const draftRef = useRef("");
+
+  const recordHistory = (t: string) => {
+    setHistory((prev) => {
+      const next = prev[prev.length - 1] === t ? prev : [...prev, t].slice(-HISTORY_MAX);
+      historyRef.current = next;
+      try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+      } catch {
+        // 忽略持久化失败
+      }
+      return next;
+    });
+    posRef.current = -1;
+    draftRef.current = "";
+  };
+
+  /** ↑↓ 切换历史：↑ 存草稿并上溯；↓ 下溯，到底部恢复草稿。 */
+  const stepHistory = (dir: -1 | 1) => {
+    const h = historyRef.current;
+    if (dir === -1) {
+      if (posRef.current === -1) {
+        draftRef.current = text; // 第一次按 ↑：记住当前未发送内容
+        posRef.current = h.length - 1;
+        if (posRef.current >= 0) setText(h[posRef.current]);
+        else posRef.current = -1; // 没有历史：保持正常编辑
+      } else if (posRef.current > 0) {
+        posRef.current -= 1;
+        setText(h[posRef.current]);
+      }
+    } else if (posRef.current !== -1) {
+      if (posRef.current < h.length - 1) {
+        posRef.current += 1;
+        setText(h[posRef.current]);
+      } else {
+        posRef.current = -1;
+        setText(draftRef.current); // 回到按 ↑ 之前的输入
+      }
+    }
+  };
+
   // 排队消息就地编辑
   const [editing, setEditing] = useState<{ list: "fu" | "st"; idx: number } | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -313,6 +372,26 @@ export const Composer = memo(function Composer({
         return;
       }
     }
+    // ↑↓ 输入历史（光标在首行/末行才触发，不干扰多行编辑）
+    if (!mention.open && e.key === "ArrowUp") {
+      const ta = e.currentTarget;
+      const caretLine = text.slice(0, ta.selectionStart).split("\n").length;
+      if (caretLine === 1) {
+        e.preventDefault();
+        stepHistory(-1);
+        return;
+      }
+    }
+    if (!mention.open && e.key === "ArrowDown") {
+      const ta = e.currentTarget;
+      const total = text.split("\n").length;
+      const caretLine = text.slice(0, ta.selectionStart).split("\n").length;
+      if (caretLine === total) {
+        e.preventDefault();
+        stepHistory(1);
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       if (showStop) return;
@@ -320,6 +399,7 @@ export const Composer = memo(function Composer({
       if (!t) return;
       if (streaming) onFollowUp(t);
       else onPrompt(t);
+      recordHistory(t);
       setText("");
     }
   };
@@ -459,6 +539,7 @@ export const Composer = memo(function Composer({
             if (!t) return;
             if (streaming) onFollowUp(t);
             else onPrompt(t);
+            recordHistory(t);
             setText("");
           }}
           disabled={!showStop && !trimmed}
