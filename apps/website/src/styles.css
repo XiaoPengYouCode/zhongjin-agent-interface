@@ -1,7 +1,23 @@
 :root {
   /* DeepSeek design tokens (dark) */
   color-scheme: dark;
-  --block-gap: 12px; /* 消息内所有相邻块（正文/思考/工具）之间的统一间距 */
+  --gap-message: 12px; /* 消息与消息之间的间距 */
+  --gap-block: 6px; /* 消息内相邻块（正文/思考/工具/错误）之间的统一间距 */
+  /* 水平排版：消息列与输入框共享同一套间距 token，对齐关系由 calc 推导 */
+  --content-max: 950px; /* 消息列/输入框最大宽度 */
+  --gutter-x: 24px; /* 列外距（消息列与输入框共用） */
+  --composer-inset-x: 18px; /* 输入框气泡左内边距 */
+  --composer-inset-r: 8px; /* 输入框气泡右内边距 */
+  --border-w: 1px; /* 输入框边框宽 */
+  --msg-inset-x: calc(
+    var(--gutter-x) + var(--composer-inset-x) + var(--border-w)
+  ); /* 消息文字左缩进 = 输入文字左缩进 */
+  --msg-inset-r: calc(
+    var(--gutter-x) + var(--composer-inset-r) + var(--border-w)
+  ); /* 消息文字右缩进 = 输入文字右缩进 */
+  /* 消息内层级缩进：正文 0 级（最左），act 块/错误块 1 级 */
+  --indent-0: 0px;
+  --indent-1: 20px;
   --bg: #151517;
   --bg-side: #1a1a1c;
   --bg-elev: #1f1f22;
@@ -18,6 +34,7 @@
   --green: #34d399;
   --red: #f87171;
   --amber: #fbbf24;
+  --orange: #fb923c; /* running/进行中：亮橙黄，不红不暗 */
   --code-bg: rgba(0, 0, 0, 0.25);
   --code-text: #c3cad9;
   --diff-add-bg: rgba(52, 211, 153, 0.14);
@@ -53,6 +70,7 @@
   --green: #0ea371;
   --red: #d93025;
   --amber: #b45309;
+  --orange: #d97706; /* running/进行中：浅色下清晰不暗的黄橙 */
   --code-bg: #eef0f4;
   --code-text: #2f333b;
   --diff-add-bg: rgba(16, 185, 129, 0.16);
@@ -1007,9 +1025,10 @@ body {
 /* Centered message column */
 .msg-row {
   display: flex;
-  margin: 0 auto 28px;
-  max-width: 950px;
-  padding: 0 24px;
+  margin: 0 auto var(--gap-message);
+  max-width: var(--content-max);
+  /* 左右缩进由 --msg-inset-* 推导，与输入框文字区自动保持对齐 */
+  padding: 0 var(--msg-inset-r) 0 var(--msg-inset-x);
   /* 屏外消息跳过布局/绘制：宽度变化（如开 DevTools）时只重排可见区域，
      长会话的重排成本大幅降低。contain-intrinsic-size 提供尺寸估算。 */
   content-visibility: auto;
@@ -1030,7 +1049,6 @@ body {
 
 .msg-row:last-child {
   animation: msg-in 0.22s ease;
-  margin-bottom: 12px; /* 最后一条贴近底部，不留 28px 大空隙 */
 }
 
 .msg-user {
@@ -1373,7 +1391,7 @@ body {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  margin: 0 0 0 20px;
+  margin: 0 0 0 var(--indent-1);
   padding: 8px 10px;
   border: 1px solid rgba(248, 113, 113, 0.3);
   border-radius: 8px;
@@ -1397,35 +1415,20 @@ body {
 /* 活动块（Activity）— think 与工具调用共用的统一外壳：
    无框行式，整体缩进（正文最左、后台操作流靠右）。 */
 .act {
-  margin: 0 0 0 20px;
+  margin: 0 0 0 var(--indent-1);
 }
 
-/* 消息内相邻块间距：正文段之间 12px；其余（正文↔act、act↔act）统一 6px。
-   统一后间距不依赖“中间是否夹 text part”，流式交错结构下也稳定不变。 */
-.msg-bubble > .markdown-body + .markdown-body {
-  margin-top: var(--block-gap);
+/* 消息内相邻块间距：统一 --gap-block，不依赖相邻块的类型。
+   此前按组合区分（正文段 12px、其余 6px、消息间 :has 28↔12），流式交错时
+   text part 出现/消失会让相邻组合切换、间距跳变；统一后任何相邻组合恒定。 */
+.msg-bubble > * + * {
+  margin-top: var(--gap-block);
 }
 
-.msg-bubble > .markdown-body + .act,
-.msg-bubble > .act + .markdown-body,
-.msg-bubble > .act + .act,
-.msg-bubble > .markdown-body + .msg-error,
-.msg-bubble > .act + .msg-error,
-.msg-bubble > .msg-error + .markdown-body,
-.msg-bubble > .msg-error + .act {
-  margin-top: 6px;
+.msg-bubble > :first-child {
+  margin-top: 0;
 }
 
-/* 含活动块的消息与其他消息之间统一 --block-gap 间距（正文-正文仍为 28px） */
-.msg-row:has(.act) + .msg-row,
-.msg-row + .msg-row:has(.act) {
-  margin-top: calc(-28px + var(--block-gap));
-}
-
-/* 活动块之间比正文段更紧凑：连续工具/思考块视觉上归组 */
-.msg-bubble > .act + .act {
-  margin-top: 6px;
-}
 .act-head {
   width: 100%;
   display: flex;
@@ -1476,7 +1479,7 @@ body {
 }
 
 .act.act-running .act-icon {
-  color: var(--amber);
+  color: var(--orange);
 }
 
 .act.act-done .act-icon {
@@ -1547,8 +1550,6 @@ body {
   margin: 0 0 4px 24px;
   border-left: 2px solid var(--border);
   padding-left: 12px;
-  max-height: 320px;
-  overflow-y: auto;
 }
 
 .tool-output {
@@ -1562,6 +1563,8 @@ body {
   white-space: pre-wrap;
   word-break: break-word;
   background: var(--code-bg);
+  max-height: 320px;
+  overflow-y: auto;
   animation: fade-in 0.18s ease;
 }
 
@@ -1614,6 +1617,9 @@ body {
   font-family: var(--mono);
   font-size: 12.5px;
   line-height: 1.5;
+  /* diff 自管滚动：大文件可看更多代码，避免外壳 clamp 后只剩头部+几行 */
+  max-height: 60vh;
+  overflow-y: auto;
 }
 
 .diff-head {
@@ -1777,7 +1783,7 @@ body {
   width: 12px;
   height: 12px;
   border: 2px solid var(--border);
-  border-top-color: var(--amber);
+  border-top-color: var(--orange);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   display: inline-block;
@@ -1795,10 +1801,10 @@ body {
 
 .composer {
   flex-shrink: 0;
-  max-width: 950px;
+  max-width: var(--content-max);
   width: 100%;
   margin: 0 auto;
-  padding: 4px 24px 24px;
+  padding: 4px var(--gutter-x) 24px;
 }
 
 .queue-panel {
@@ -1850,9 +1856,9 @@ body {
   align-items: flex-end;
   gap: 8px;
   background: var(--bg-hover);
-  border: 1px solid var(--border);
+  border: var(--border-w) solid var(--border);
   border-radius: 22px;
-  padding: 8px 8px 8px 18px;
+  padding: 8px var(--composer-inset-r) 8px var(--composer-inset-x);
   transition:
     border-color 0.15s,
     background 0.15s;
