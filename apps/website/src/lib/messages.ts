@@ -2,6 +2,7 @@ import type {
   AgentMessage,
   AgentSessionEvent,
   AssistantContent,
+  AssistantMessage,
   AssistantMessageEvent,
   ImageContent,
   TextContent,
@@ -39,6 +40,13 @@ function partsOf(content: AssistantContent[]): UiPart[] {
 let keyCounter = 0;
 function nextKey(): string {
   return `m${++keyCounter}`;
+}
+
+/** 提取 assistant 消息的失败信息：stopReason=error 或带 errorMessage。
+ *  用户主动中止（aborted）不算错误，不显示错误块。 */
+function messageError(m: AssistantMessage): string | undefined {
+  if (m.stopReason === "aborted") return undefined;
+  return m.errorMessage || undefined;
 }
 
 function attachToolResult(messages: UiMessage[], result: ToolResultMessage): UiMessage[] {
@@ -113,6 +121,7 @@ export function messagesToUi(
         model: m.model,
         timestamp: m.timestamp,
         streaming: false,
+        error: messageError(m),
       });
     } else {
       out = attachToolResult(out, m);
@@ -142,6 +151,7 @@ function sameUiMessage(a: UiMessage, b: UiMessage): boolean {
     a.entryId !== b.entryId
   )
     return false;
+  if (a.error !== b.error) return false;
   if (a.parts.length !== b.parts.length) return false;
   for (let i = 0; i < a.parts.length; i++) {
     if (!partEqual(a.parts[i], b.parts[i])) return false;
@@ -200,6 +210,7 @@ export function applyEvent(messages: UiMessage[], event: AgentSessionEvent): UiM
             model: m.model,
             timestamp: m.timestamp,
             streaming: true,
+            error: messageError(m),
           },
         ];
       }
@@ -231,6 +242,9 @@ export function applyEvent(messages: UiMessage[], event: AgentSessionEvent): UiM
           parts: mergeToolState(partsOf(m.content), last.parts),
           model: m.model,
           streaming: false,
+          // 运行失败的最终消息带 errorMessage：在此落定错误块（
+          // 快照路径由 messagesToUi 补，重连后不丢）。
+          error: messageError(m),
         }));
       }
       if (m.role === "toolResult") return attachToolResult(messages, m);

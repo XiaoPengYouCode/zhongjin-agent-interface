@@ -1,5 +1,5 @@
-import { memo, useEffect, useRef, useState } from "react";
-import { MdPsychology } from "react-icons/md";
+import { Fragment, memo, useEffect, useRef, useState } from "react";
+import { MdErrorOutline, MdPsychology } from "react-icons/md";
 import { Markdown } from "./Markdown.tsx";
 import { ToolCallBlock } from "./ToolCallBlock.tsx";
 import type { UiMessage, UiPart } from "../lib/types.ts";
@@ -57,11 +57,6 @@ const CLOSE_ICON = (
   </svg>
 );
 
-/** 广播一次自动滚动请求（thinking/tool 展开折叠时由各组件触发）。 */
-function requestAutoScroll() {
-  document.dispatchEvent(new CustomEvent("pi:autoscroll"));
-}
-
 function ThinkingBlock({
   part,
   streaming,
@@ -98,16 +93,13 @@ function ThinkingBlock({
     return () => cancelAnimationFrame(id);
   }, [open, streaming]);
 
-  // 展开/收起/流式结束触发一次外层自动滚动（贴底时生效）。
-  useEffect(() => {
-    requestAutoScroll();
-  }, [streaming, open]);
-
+  // 展开/收起/流式结束的高度动画由 .thinking-collapse 的 height 过渡驱动，
+  // 外层自动滚动由 MessageList 的 ResizeObserver 跟随（贴底时生效），无需广播。
   return (
     <div className="thinking">
       <button className="thinking-head" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
         <MdPsychology className="thinking-icon" />
-        <span className="tool-name">thinking</span>
+        <span className="tool-name">think</span>
       </button>
       <div
         className="thinking-collapse"
@@ -218,9 +210,32 @@ export const MessageBubble = memo(function MessageBubble({
     <div className="msg-row msg-assistant">
       <div className="msg-bubble msg-assistant-bubble">
         {message.parts.map((part, i) => {
-          if (part.kind === "thinking")
+          if (part.kind === "thinking") {
+            // 后跟工具块的思考：挪到该工具块之后渲染（“跟在 bash 后面”），
+            // 动作/输出在前、理由在后；消息末尾的思考保持原位。
+            let j = i + 1;
+            while (j < message.parts.length && message.parts[j].kind === "thinking") j++;
+            if (j < message.parts.length && message.parts[j].kind === "toolCall") return null;
             return <ThinkingBlock key={i} part={part} streaming={message.streaming} />;
-          if (part.kind === "toolCall") return <ToolCallBlock key={part.id} part={part} />;
+          }
+          if (part.kind === "toolCall") {
+            // 紧跟其后的思考块（含连续多个）：渲染在工具块之后，
+            // 与前一条 defer 规则对应（思考 → 工具 在显示时变为 工具 → 思考）。
+            const before: Extract<UiPart, { kind: "thinking" }>[] = [];
+            for (let k = i - 1; k >= 0; k--) {
+              const p = message.parts[k];
+              if (p.kind !== "thinking") break;
+              before.unshift(p);
+            }
+            return (
+              <Fragment key={i}>
+                <ToolCallBlock key={part.id} part={part} />
+                {before.map((p, k) => (
+                  <ThinkingBlock key={k} part={p} streaming={message.streaming} />
+                ))}
+              </Fragment>
+            );
+          }
           // 流式期间 content 里可能出现空的 text part：跳过，
           // 否则会作为 0 高度的“幽灵块”在工具块之间制造/吞掉间距。
           if (!part.text) return null;
@@ -230,6 +245,12 @@ export const MessageBubble = memo(function MessageBubble({
             </div>
           );
         })}
+        {message.error && (
+          <div className="msg-error" role="alert">
+            <MdErrorOutline className="msg-error-icon" />
+            <span className="msg-error-text">{message.error}</span>
+          </div>
+        )}
       </div>
     </div>
   );

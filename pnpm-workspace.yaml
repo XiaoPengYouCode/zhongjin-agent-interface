@@ -17,6 +17,7 @@ catalog:
   react-arborist: ^3.16.0
   react-icons: ^5.7.0
   typescript: ^7.0.2
+  use-stick-to-bottom: ^1.1.6
   vite: npm:@voidzero-dev/vite-plus-core@0.2.8
   vite-plus: 0.2.8
 overrides:

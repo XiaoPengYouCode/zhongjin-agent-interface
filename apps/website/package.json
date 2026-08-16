@@ -19,7 +19,8 @@
     "marked-react": "catalog:",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-icons": "catalog:"
+    "react-icons": "catalog:",
+    "use-stick-to-bottom": "catalog:"
   },
   "devDependencies": {
     "@types/diff": "catalog:",

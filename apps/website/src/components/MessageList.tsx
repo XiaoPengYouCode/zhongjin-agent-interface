@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { useStickToBottom } from "use-stick-to-bottom";
 import { MessageBubble } from "./MessageBubble.tsx";
 import type { UiMessage } from "../lib/types.ts";
 
@@ -11,123 +12,57 @@ export function MessageList({
   onRetract: (entryId: string) => void;
   onEditResend: (entryId: string, text: string) => void;
 }) {
-  const scroller = useRef<HTMLDivElement>(null);
-  const stick = useRef(true);
-  // 程序化滚动会触发 scroll 事件：记录时间戳，窗口期内的事件视为程序化滚动，
-  // 不参与 stick 判定（避免流式增长时以过期布局误判）。
-  const lastProgScroll = useRef(0);
-  // 上一次记录的 scrollTop：scrollTop 明显变小 = 用户主动上滑（程序化滚动只会
-  // 变大或不变），该判定不依赖布局，content-visibility 估算不影响它。
-  const lastTop = useRef(0);
-  const DEBUG = useRef(
-    typeof localStorage !== "undefined" && localStorage.getItem("pi-web-debug") === "1",
-  );
-
-  const logScroll = (msg: string, extra?: unknown) => {
-    if (DEBUG.current) console.debug(`[scroll] ${msg}`, extra ?? "");
-  };
-
-  /** 滚到最新消息：用 scrollIntoView 定位真实元素（content-visibility 下
-   *  scrollHeight 是估算值，不可用；浏览器会为目标元素计算真实位置）。
-   *  执行时二次确认 stick：rAF 排队期间用户可能已上滑，此时不能再拽回底部。 */
-  const scrollToBottom = () => {
-    const el = scroller.current;
-    if (!el || !stick.current) return;
-    const last = el.lastElementChild as HTMLElement | null;
-    if (last) {
-      lastProgScroll.current = performance.now();
-      last.scrollIntoView({ block: "end" });
-    } else {
-      lastProgScroll.current = performance.now();
-      el.scrollTop = el.scrollHeight;
-    }
-    logScroll("programmatic -> bottom");
-  };
-
-  const onScroll = () => {
-    const el = scroller.current;
-    if (!el) return;
-    const last = el.lastElementChild as HTMLElement | null;
-    if (!last) return;
-    const prevTop = lastTop.current;
-    lastTop.current = el.scrollTop;
-    // 用户主动上滑：scrollTop 减小。立刻退出贴底（不等 120ms 窗口），
-    // 且后续 rAF 滚动因 scrollToBottom 内的 stick 复查而不再执行。
-    if (el.scrollTop < prevTop - 4) {
-      if (stick.current) logScroll("user scroll up -> unstick");
-      stick.current = false;
-      return;
-    }
-    // 程序化滚动的回声事件（窗口期内）：跳过判定，避免流式增长时
-    // 以过期布局把贴底误判为离开底部。
-    if (performance.now() - lastProgScroll.current < 120) return;
-    // stick 判定：最后一条消息的底部距容器底部的距离（不依赖 scrollHeight，
-    // 与 content-visibility 的估算高度兼容）。
-    const next = el.getBoundingClientRect().bottom - last.getBoundingClientRect().bottom < 80;
-    if (next !== stick.current) {
-      logScroll(`stick ${stick.current} -> ${next}`);
-    }
-    stick.current = next;
-  };
+  // 自动贴底（use-stick-to-bottom）：内容增长（流式输出 / 块展开动画 / 图片
+  // 加载）时自动跟随，内容收缩不丢贴底；用户上滑即取消跟随，滚回底部附近
+  // 自动恢复。程序化滚动与用户滚动的区分基于 ResizeObserver + 无 debounce，
+  // 不依赖 scrollHeight 估算，与 .msg-row 的 content-visibility 兼容。
+  const { scrollRef, contentRef, scrollToBottom } = useStickToBottom({
+    resize: "smooth", // 流式增长：弹簧动画平滑跟随（固定时长 easing 在变尺寸内容下会抽搐）
+    initial: "instant", // 首屏 / 切会话：直接落到底部，不做动画
+  });
 
   // 最新一条是用户刚发的消息时，强制滚到底部（用户可能之前上滑读过内容）。
   const lastIsUser = messages.length > 0 && messages[messages.length - 1].role === "user";
-
   useEffect(() => {
-    const el = scroller.current;
-    if (!el) return;
-    if (lastIsUser) stick.current = true;
-    if (stick.current) {
-      // 等布局稳定后再滚，避免读到旧高度。
-      requestAnimationFrame(scrollToBottom);
-    }
-  }, [messages, lastIsUser]);
+    if (lastIsUser) void scrollToBottom();
+  }, [lastIsUser, scrollToBottom]);
 
-  // thinking / tool 块展开或折叠时，无条件下拉一次（由组件广播事件驱动）。
+  // 输入框增高会压缩 .messages 的视口，底部内容被遮住。库只监听内容高度，
+  // 视口变矮需自己补：仍贴底时跟随滚到底部（上滑未回底时不抢占）。
   useEffect(() => {
-    // thinking / tool 展开折叠触发的自动滚动：仅在用户贴底（stick）时生效，
-    // 用户手动上滑且未回到底部时忽略，避免抢占手动滚动。
-    const onAutoScroll = () => {
-      if (!stick.current) return;
-      requestAnimationFrame(scrollToBottom);
-    };
-    document.addEventListener("pi:autoscroll", onAutoScroll);
-    return () => document.removeEventListener("pi:autoscroll", onAutoScroll);
-  }, []);
-
-  // 输入框增高会压缩 .messages 的视口，底部内容被遮住；
-  // 视口变矮时若用户贴底则跟随滚到底部（手动上滑未回底时不抢占）。
-  useEffect(() => {
-    const el = scroller.current;
+    const el = scrollRef.current;
     if (!el) return;
     let prevH = 0;
     const ro = new ResizeObserver((entries) => {
       const h = entries[0]?.contentRect.height ?? 0;
-      if (prevH !== 0 && h < prevH && stick.current) requestAnimationFrame(scrollToBottom);
+      if (prevH !== 0 && h < prevH) void scrollToBottom({ preserveScrollPosition: true });
       prevH = h;
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
-
-  if (messages.length === 0) {
-    return (
-      <div className="messages" ref={scroller} onScroll={onScroll}>
-        <div className="empty">
-          <div className="empty-mark">π</div>
-          <p className="empty-title">Pi Web</p>
-          <p className="empty-hint">输入一条消息，开始和 Pi 对话。</p>
-          <p className="empty-sub">会话与终端里的 Pi 共享，可以随时恢复。</p>
-        </div>
-      </div>
-    );
-  }
+  }, [scrollRef, scrollToBottom]);
 
   return (
-    <div className="messages" ref={scroller} onScroll={onScroll}>
-      {messages.map((m) => (
-        <MessageBubble key={m.key} message={m} onRetract={onRetract} onEditResend={onEditResend} />
-      ))}
+    <div className="messages" ref={scrollRef}>
+      <div ref={contentRef}>
+        {messages.length === 0 ? (
+          <div className="empty">
+            <div className="empty-mark">π</div>
+            <p className="empty-title">Pi Web</p>
+            <p className="empty-hint">输入一条消息，开始和 Pi 对话。</p>
+            <p className="empty-sub">会话与终端里的 Pi 共享，可以随时恢复。</p>
+          </div>
+        ) : (
+          messages.map((m) => (
+            <MessageBubble
+              key={m.key}
+              message={m}
+              onRetract={onRetract}
+              onEditResend={onEditResend}
+            />
+          ))
+        )}
+      </div>
     </div>
   );
 }

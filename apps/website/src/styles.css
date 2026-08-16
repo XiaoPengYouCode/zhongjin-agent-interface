@@ -1230,6 +1230,32 @@ body {
   justify-content: flex-end;
 }
 
+/* 运行失败块：行式红色块，与 thinking/tool 同级缩进 */
+.msg-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 0 20px;
+  padding: 8px 10px;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 8px;
+  background: rgba(248, 113, 113, 0.08);
+  color: var(--red);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.msg-error-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--red);
+}
+
+.msg-error-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 /* Tool calls — 无框行式：整体缩进（正文最左、工具为后台操作流） */
 .tool-call {
   margin: 0 0 0 20px;
@@ -1246,7 +1272,10 @@ body {
 .msg-bubble > .tool-call + .thinking,
 .msg-bubble > .thinking + .markdown-body,
 .msg-bubble > .thinking + .tool-call,
-.msg-bubble > .thinking + .thinking {
+.msg-bubble > .thinking + .thinking,
+.msg-bubble > .markdown-body + .msg-error,
+.msg-bubble > .tool-call + .msg-error,
+.msg-bubble > .thinking + .msg-error {
   margin-top: var(--block-gap);
 }
 

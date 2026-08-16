@@ -99,14 +99,8 @@ export const ToolCallBlock = memo(function ToolCallBlock({ part }: { part: UiToo
     return () => cancelAnimationFrame(id);
   }, [open, part.state]);
 
-  // 展开/折叠时强制外层滚动到底一次；再延迟一次覆盖展开动画结束后的最终高度。
-  useEffect(() => {
-    const scroll = () => document.dispatchEvent(new CustomEvent("pi:autoscroll"));
-    scroll();
-    const t = window.setTimeout(scroll, 260);
-    return () => window.clearTimeout(t);
-  }, [open]);
-
+  // 展开/折叠的高度动画由 .tool-collapse 的 height 过渡驱动，外层自动滚动由
+  // MessageList 的 ResizeObserver 跟随（贴底时生效），无需广播事件。
   // 执行中让输出区内部滚动跟随最新内容（外层滚动到此即可看到结尾）。
   // 移入 rAF：避免每 chunk 同步写 scrollTop 强制布局。
   useEffect(() => {

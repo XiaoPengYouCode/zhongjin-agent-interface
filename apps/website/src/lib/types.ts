@@ -174,6 +174,8 @@ export interface UiMessage {
   streaming: boolean;
   /** 服务端会话树中的 entry id（用户消息撤回/编辑用），运行中可能暂缺。 */
   entryId?: string;
+  /** 运行失败信息（assistant 消息 stopReason=error / errorMessage），渲染为错误块。 */
+  error?: string;
 }
 
 export type ConnectionState = "connecting" | "open" | "closed";
