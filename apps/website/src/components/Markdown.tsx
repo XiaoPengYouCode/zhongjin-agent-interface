@@ -1,8 +1,9 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, type ReactNode } from "react";
 import MdRenderer from "marked-react";
 import remend from "remend";
 import { CodeBlock } from "./CodeBlock.tsx";
 import { MermaidBlock } from "./MermaidBlock.tsx";
+import { AnimatedText } from "./AnimatedText.tsx";
 
 /**
  * Markdown 渲染：marked-react（marked 的 React 封装）。
@@ -72,9 +73,15 @@ export function splitSegments(text: string): Seg[] {
 // ---------------------------------------------------------------------------
 
 /** 已完成正文段：整段一次性解析（缓存，内容不变则不重渲染）。 */
-function MdBlock({ text }: { text: string }) {
-  return useMemo(() => <MdRenderer value={text} gfm />, [text]);
+function MdBlock({ text, animate }: { text: string; animate: boolean }) {
+  return useMemo(
+    () => <MdRenderer value={text} gfm renderer={animate ? TEXT_RENDERER : undefined} />,
+    [text, animate],
+  );
 }
+
+/** 文本节点拦截器：流式时逐 token 动画（代码块/行内代码不经 text，不受影响）。 */
+const TEXT_RENDERER = { text: (t: ReactNode) => <AnimatedText text={String(t)} /> };
 
 /**
  * 流式正文段（始终用于最后一段，终态也用它，保证结束时无结构切换）：
@@ -82,17 +89,27 @@ function MdBlock({ text }: { text: string }) {
  * 先用 remend 补全未闭合语法（**text → **text**）再渲染，行内格式流式中即时生效；
  * 行补全后并入整段，结构不变。
  */
-function LiveMdBlock({ text }: { text: string }) {
+function LiveMdBlock({ text, animate }: { text: string; animate: boolean }) {
   const nl = text.lastIndexOf("\n");
   const head = nl === -1 ? "" : text.slice(0, nl);
   const live = nl === -1 ? text : text.slice(nl + 1);
-  const headNode = useMemo(() => (head ? <MdRenderer value={head} gfm /> : null), [head]);
+  const headNode = useMemo(
+    () =>
+      head ? <MdRenderer value={head} gfm renderer={animate ? TEXT_RENDERER : undefined} /> : null,
+    [head, animate],
+  );
   const liveNode = useMemo(() => {
     if (!live) return null;
     if (live.length > LINE_MAX) return live;
     // 补全未闭合的行内语法（链接用纯文本模式，避免占位协议可点击）。
-    return <MdRenderer value={remend(live, { linkMode: "text-only" })} gfm />;
-  }, [live]);
+    return (
+      <MdRenderer
+        value={remend(live, { linkMode: "text-only" })}
+        gfm
+        renderer={animate ? TEXT_RENDERER : undefined}
+      />
+    );
+  }, [live, animate]);
   return (
     <>
       {headNode}
@@ -105,7 +122,14 @@ function LiveMdBlock({ text }: { text: string }) {
 // 入口
 // ---------------------------------------------------------------------------
 
-export const Markdown = memo(function Markdown({ text }: { text: string }) {
+export const Markdown = memo(function Markdown({
+  text,
+  animate = false,
+}: {
+  text: string;
+  /** 流式消息时逐 token 渐进动画；历史/终态消息保持静态渲染。 */
+  animate?: boolean;
+}) {
   const segs = useMemo(() => splitSegments(text), [text]);
   return (
     <>
@@ -118,8 +142,8 @@ export const Markdown = memo(function Markdown({ text }: { text: string }) {
           }
           return <CodeBlock key={i} lang={seg.lang} text={seg.text} />;
         }
-        if (last) return <LiveMdBlock key={i} text={seg.text} />;
-        return <MdBlock key={i} text={seg.text} />;
+        if (last) return <LiveMdBlock key={i} text={seg.text} animate={animate} />;
+        return <MdBlock key={i} text={seg.text} animate={animate} />;
       })}
     </>
   );

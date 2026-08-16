@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { MdPsychology } from "react-icons/md";
 import { ActivityBlock } from "./ActivityBlock.tsx";
+import { AnimatedText } from "./AnimatedText.tsx";
 import { DiffView } from "./DiffView.tsx";
 import { HighlightedCommand, TerminalOutput } from "./TerminalOutput.tsx";
 import { toolIcon, toolKind, toolSummary } from "../lib/tool-format.tsx";
@@ -88,15 +89,22 @@ export const ToolCallBlock = memo(function ToolCallBlock({ part }: { part: UiToo
  *  主体为思考全文（默认收起，可手动展开查看）。 */
 export const ThinkingBlock = memo(function ThinkingBlock({
   part,
+  animate = false,
 }: {
   part: Extract<UiPart, { kind: "thinking" }>;
+  /** 流式消息时思考正文逐 token 渐进浮现。 */
+  animate?: boolean;
 }) {
   return (
     <ActivityBlock
       icon={<MdPsychology className="act-icon-accent" />}
       name="think"
       summary={<span className="act-summary-live">{part.text}</span>}
-      body={<div className="act-think-body">{part.text}</div>}
+      body={
+        <div className="act-think-body">
+          {animate ? <AnimatedText text={part.text} /> : part.text}
+        </div>
+      }
     />
   );
 });

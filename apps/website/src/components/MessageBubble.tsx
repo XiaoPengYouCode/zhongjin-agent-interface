@@ -1,4 +1,4 @@
-import { Fragment, memo, useState } from "react";
+import { memo, useState, type ReactNode } from "react";
 import { MdErrorOutline } from "react-icons/md";
 import { Markdown } from "./Markdown.tsx";
 import { ThinkingBlock, ToolCallBlock } from "./ToolCallBlock.tsx";
@@ -132,6 +132,56 @@ function UserMessage({ message, onRetract, onEditResend }: UserMessageProps) {
   );
 }
 
+/**
+ * 把 parts 渲染为平铺序列（不做嵌套 Fragment）：
+ * - defer 规则（think 后跟 bash 时，think 移到 bash 后面）保持；
+ * - 每个块用「原始 part 索引」作稳定 key：流式中 bash 出现导致 think 换位时，
+ *   React 按 key 移动 DOM 而非卸载重挂载 → 折叠状态/高度动画不丢失、不错位。
+ */
+function renderParts(message: UiMessage): ReactNode[] {
+  const parts = message.parts;
+  const out: ReactNode[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (part.kind === "thinking") {
+      // 后跟工具块的思考：挪到该工具块之后渲染（“跟在 bash 后面”），
+      // 动作/输出在前、理由在后；消息末尾的思考保持原位。
+      let j = i + 1;
+      while (j < parts.length && parts[j].kind === "thinking") j++;
+      if (j < parts.length && parts[j].kind === "toolCall") continue;
+      out.push(<ThinkingBlock key={`t${i}`} part={part} animate={message.streaming} />);
+      continue;
+    }
+    if (part.kind === "toolCall") {
+      // 紧跟其后的思考块（含连续多个）：渲染在工具块之后，
+      // 与前一条 defer 规则对应（思考 → 工具 在显示时变为 工具 → 思考）。
+      const before: Extract<UiPart, { kind: "thinking" }>[] = [];
+      for (let k = i - 1; k >= 0; k--) {
+        const p = parts[k];
+        if (p.kind !== "thinking") break;
+        before.unshift(p);
+      }
+      out.push(<ToolCallBlock key={part.id} part={part} />);
+      before.forEach((p, k) => {
+        // 原始索引 key：与未 defer 时的 key 一致，换位不重挂载。
+        out.push(
+          <ThinkingBlock key={`t${i - before.length + k}`} part={p} animate={message.streaming} />,
+        );
+      });
+      continue;
+    }
+    // 流式期间 content 里可能出现空的 text part：跳过，
+    // 否则会作为 0 高度的“幽灵块”在工具块之间制造/吞掉间距。
+    if (!part.text) continue;
+    out.push(
+      <div key={`m${i}`} className="markdown-body">
+        <Markdown text={part.text} animate={message.streaming} />
+      </div>,
+    );
+  }
+  return out;
+}
+
 export const MessageBubble = memo(function MessageBubble({
   message,
   onRetract,
@@ -148,42 +198,7 @@ export const MessageBubble = memo(function MessageBubble({
   return (
     <div className="msg-row msg-assistant">
       <div className="msg-bubble msg-assistant-bubble">
-        {message.parts.map((part, i) => {
-          if (part.kind === "thinking") {
-            // 后跟工具块的思考：挪到该工具块之后渲染（“跟在 bash 后面”），
-            // 动作/输出在前、理由在后；消息末尾的思考保持原位。
-            let j = i + 1;
-            while (j < message.parts.length && message.parts[j].kind === "thinking") j++;
-            if (j < message.parts.length && message.parts[j].kind === "toolCall") return null;
-            return <ThinkingBlock key={i} part={part} />;
-          }
-          if (part.kind === "toolCall") {
-            // 紧跟其后的思考块（含连续多个）：渲染在工具块之后，
-            // 与前一条 defer 规则对应（思考 → 工具 在显示时变为 工具 → 思考）。
-            const before: Extract<UiPart, { kind: "thinking" }>[] = [];
-            for (let k = i - 1; k >= 0; k--) {
-              const p = message.parts[k];
-              if (p.kind !== "thinking") break;
-              before.unshift(p);
-            }
-            return (
-              <Fragment key={i}>
-                <ToolCallBlock key={part.id} part={part} />
-                {before.map((p, k) => (
-                  <ThinkingBlock key={k} part={p} />
-                ))}
-              </Fragment>
-            );
-          }
-          // 流式期间 content 里可能出现空的 text part：跳过，
-          // 否则会作为 0 高度的“幽灵块”在工具块之间制造/吞掉间距。
-          if (!part.text) return null;
-          return (
-            <div key={i} className="markdown-body">
-              <Markdown text={part.text} />
-            </div>
-          );
-        })}
+        {renderParts(message)}
         {message.error && (
           <div className="msg-error" role="alert">
             <MdErrorOutline className="msg-error-icon" />
