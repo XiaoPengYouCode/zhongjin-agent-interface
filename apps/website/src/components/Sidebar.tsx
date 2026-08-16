@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { pickFolder } from "../lib/fs.ts";
 import { timeAgo } from "../lib/format.ts";
 import type { ConnectionState, SessionInfo, SessionStatus } from "../lib/types.ts";
@@ -12,6 +12,7 @@ interface SidebarProps {
   conn: ConnectionState;
   onNew: (cwd?: string) => void;
   onResume: (path: string) => void;
+  onDelete: (path: string) => void;
 }
 
 function titleOf(s: SessionInfo): string {
@@ -87,6 +88,51 @@ function SessionIndicator({ status }: { status: SessionStatus }) {
   return null;
 }
 
+const TRASH_ICON = (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+    <path d="M10 11v6M14 11v6" />
+  </svg>
+);
+
+/** 删除按钮：两步确认（先点变红色“确认?”，3 秒内再点执行），防止误删。 */
+function SessionDeleteButton({ onDelete }: { onDelete: () => void }) {
+  const [armed, setArmed] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  const click = () => {
+    if (!armed) {
+      setArmed(true);
+      timer.current = window.setTimeout(() => setArmed(false), 3000);
+      return;
+    }
+    window.clearTimeout(timer.current);
+    onDelete();
+  };
+
+  return (
+    <button
+      className={`session-del ${armed ? "armed" : ""}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        click();
+      }}
+      title={armed ? "再次点击确认删除" : "删除会话（移入废纸篓）"}
+      aria-label={armed ? "确认删除会话" : "删除会话"}
+    >
+      {armed ? "确认?" : TRASH_ICON}
+    </button>
+  );
+}
+
 export const Sidebar = memo(function Sidebar({
   sessions,
   statuses,
@@ -95,6 +141,7 @@ export const Sidebar = memo(function Sidebar({
   conn,
   onNew,
   onResume,
+  onDelete,
 }: SidebarProps) {
   const [query, setQuery] = useState("");
   // 每分钟重渲染一次，让会话相对时间（timeAgo）保持新鲜。
@@ -219,17 +266,21 @@ export const Sidebar = memo(function Sidebar({
                 group.items.map((s) => {
                   const status = statuses[s.path] ?? s.status;
                   return (
-                    <button
+                    <div
                       key={s.path}
                       className={`session-item ${s.path === currentFile ? "active" : ""}`}
-                      onClick={() => onResume(s.path)}
                     >
-                      <div className="session-item-main">
+                      <button
+                        className="session-item-main"
+                        onClick={() => onResume(s.path)}
+                        title={s.path}
+                      >
                         <div className="session-title">{titleOf(s)}</div>
                         <div className="session-time">{timeAgo(s.modified)}</div>
-                      </div>
+                      </button>
                       {status && <SessionIndicator status={status} />}
-                    </button>
+                      <SessionDeleteButton onDelete={() => onDelete(s.path)} />
+                    </div>
                   );
                 })}
             </div>

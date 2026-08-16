@@ -107,6 +107,7 @@ export interface PiActions {
   newSession: (cwd?: string) => void;
   resume: (path: string) => void;
   renameSession: (name: string) => void;
+  deleteSession: (path: string) => void;
   clearError: () => void;
   setModel: (provider: string, id: string) => Promise<void>;
   setThinkingLevel: (level: string) => Promise<void>;
@@ -278,6 +279,7 @@ export function usePi() {
       newSession: (cwd) => send({ type: "newSession", ...(cwd ? { cwd } : {}) }),
       resume: (path) => send({ type: "resume", path }),
       renameSession: (name) => send({ type: "renameSession", name }),
+      deleteSession: (path) => send({ type: "deleteSession", path }),
       clearError: () => dispatch({ type: "clear-error" }),
       setModel,
       setThinkingLevel,

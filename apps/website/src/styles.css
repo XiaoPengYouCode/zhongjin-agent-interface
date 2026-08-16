@@ -349,13 +349,9 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  text-align: left;
-  border: none;
-  background: transparent;
-  color: var(--text);
   border-radius: 8px;
   padding: 9px 10px 9px 20px;
-  cursor: pointer;
+  color: var(--text);
   font-family: inherit;
 }
 
@@ -373,6 +369,55 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* 删除按钮：hover 显示，两步确认时变红 */
+.session-del {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.15s,
+    background 0.15s,
+    color 0.15s;
+}
+
+.session-item:hover .session-del,
+.session-del.armed {
+  opacity: 1;
+}
+
+.session-del:hover {
+  background: var(--bg-hover);
+  color: var(--red);
+}
+
+.session-del.armed {
+  width: auto;
+  padding: 0 7px;
+  font-size: 11px;
+  color: var(--red);
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.session-del svg {
+  width: 13px;
+  height: 13px;
 }
 
 .session-title {

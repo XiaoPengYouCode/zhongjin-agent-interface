@@ -59,6 +59,7 @@ export type ClientMessage =
   | { type: "newSession"; cwd?: string }
   | { type: "resume"; path: string }
   | { type: "renameSession"; name: string }
+  | { type: "deleteSession"; path: string }
   | { type: "ping" };
 
 // ---------------------------------------------------------------------------

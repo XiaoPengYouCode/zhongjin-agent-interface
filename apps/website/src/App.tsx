@@ -120,6 +120,7 @@ export default function App() {
         conn={conn}
         onNew={actions.newSession}
         onResume={actions.resume}
+        onDelete={actions.deleteSession}
       />
 
       <main className="chat">

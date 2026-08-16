@@ -1,5 +1,6 @@
 import { getAgentDir, loadSkills } from "@earendil-works/pi-coding-agent";
 import { createReadStream, existsSync, readdirSync, statSync } from "node:fs";
+import { unlink } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
@@ -180,6 +181,17 @@ async function openOrReuse(sessionFile: string): Promise<PiService> {
   }
   return PiService.open(sessionFile);
 }
+
+/** 删除会话文件：优先 trash CLI（可恢复），失败退回直接删除。 */
+async function deleteSessionFile(path: string): Promise<void> {
+  try {
+    await execFileAsync("trash", [path]);
+    return;
+  } catch {
+    // trash CLI 不存在或失败：直接删除。
+  }
+  await unlink(path);
+}
 console.log(`[pi-web] agent cwd: ${cwd}`);
 console.log(`[pi-web] session: ${service.session.sessionFile ?? "(new, in-memory)"}`);
 const model = service.session.model;
@@ -222,6 +234,7 @@ type ClientMessage =
   | { type: "newSession"; cwd?: string }
   | { type: "resume"; path: string }
   | { type: "renameSession"; name: string }
+  | { type: "deleteSession"; path: string }
   | { type: "ping" };
 
 const clients = new Set<WebSocket>();
@@ -315,6 +328,27 @@ async function handleClientMessage(ws: WebSocket, msg: ClientMessage) {
     case "renameSession": {
       service.renameSession(msg.name);
       invalidateSessionsCache();
+      send(ws, { type: "session", session: sessionState() });
+      return;
+    }
+    case "deleteSession": {
+      // 释放该会话的存活实例（后台运行中的 agent 会被停止），
+      // 避免 openOrReuse 复用已删除文件的“幽灵”实例。
+      let deletedActive = false;
+      for (const [id, svc] of services) {
+        if (svc.sessionFile !== msg.path) continue;
+        await svc.dispose();
+        services.delete(id);
+        if (service === svc) deletedActive = true;
+      }
+      await deleteSessionFile(msg.path);
+      sessionStatuses.delete(msg.path);
+      invalidateSessionsCache();
+      if (deletedActive) {
+        // 删除的是当前活跃会话：切换到该目录下的新会话。
+        const fresh = await PiService.createNew(cwd);
+        await switchService(fresh);
+      }
       send(ws, { type: "session", session: sessionState() });
       return;
     }
