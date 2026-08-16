@@ -962,7 +962,7 @@ body {
 .messages {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 0 20px;
+  padding: 24px 0 12px;
 }
 
 .messages::-webkit-scrollbar-thumb {
@@ -1030,6 +1030,7 @@ body {
 
 .msg-row:last-child {
   animation: msg-in 0.22s ease;
+  margin-bottom: 12px; /* 最后一条贴近底部，不留 28px 大空隙 */
 }
 
 .msg-user {
@@ -1399,16 +1400,20 @@ body {
   margin: 0 0 0 20px;
 }
 
-/* 统一间距：消息内所有相邻块（正文/活动块）间距一致（--block-gap）。
-   不再区分“正文↔块 / 块↔块”：流式期间 text part 出现/消失不会导致空隙跳变。
-   （活动块 20px 左缩进由各自 margin 提供，间距只由本条规则控制。） */
-.msg-bubble > .markdown-body + .markdown-body,
+/* 消息内相邻块间距：正文段之间 12px；其余（正文↔act、act↔act）统一 6px。
+   统一后间距不依赖“中间是否夹 text part”，流式交错结构下也稳定不变。 */
+.msg-bubble > .markdown-body + .markdown-body {
+  margin-top: var(--block-gap);
+}
+
 .msg-bubble > .markdown-body + .act,
 .msg-bubble > .act + .markdown-body,
 .msg-bubble > .act + .act,
 .msg-bubble > .markdown-body + .msg-error,
-.msg-bubble > .act + .msg-error {
-  margin-top: var(--block-gap);
+.msg-bubble > .act + .msg-error,
+.msg-bubble > .msg-error + .markdown-body,
+.msg-bubble > .msg-error + .act {
+  margin-top: 6px;
 }
 
 /* 含活动块的消息与其他消息之间统一 --block-gap 间距（正文-正文仍为 28px） */
@@ -1421,7 +1426,6 @@ body {
 .msg-bubble > .act + .act {
   margin-top: 6px;
 }
-
 .act-head {
   width: 100%;
   display: flex;
