@@ -43,10 +43,29 @@ function nextKey(): string {
 }
 
 /** 提取 assistant 消息的失败信息：stopReason=error 或带 errorMessage。
- *  用户主动中止（aborted）不算错误，不显示错误块。 */
+ *  用户主动中止（aborted）不算错误，不显示错误块；
+ *  abort/取消类错误消息（如浏览器 AbortError 的 "This operation was aborted"）
+ *  同样不显示 —— 界面是中文，英文原始文案不适合直接展示。 */
 function messageError(m: AssistantMessage): string | undefined {
   if (m.stopReason === "aborted") return undefined;
-  return m.errorMessage || undefined;
+  const raw = m.errorMessage;
+  if (!raw) return undefined;
+  if (/abort|cancel/i.test(raw)) return undefined;
+  return localizeError(raw);
+}
+
+/** SDK 常见英文错误 → 中文（其余保留原文）。 */
+function localizeError(msg: string): string {
+  if (/no api key found/i.test(msg)) {
+    return "未找到该 provider 的 API Key，请在 设置 → 认证 中配置。";
+  }
+  if (/compaction failed/i.test(msg)) {
+    return "会话压缩失败，请重试或开新会话。";
+  }
+  if (/invalid api key|authentication failed/i.test(msg)) {
+    return "API Key 无效或认证失败，请检查 设置 → 认证。";
+  }
+  return msg;
 }
 
 function attachToolResult(messages: UiMessage[], result: ToolResultMessage): UiMessage[] {

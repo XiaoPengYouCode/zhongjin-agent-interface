@@ -1339,10 +1339,10 @@ body {
 /* 运行失败块：行式红色块，与活动块同级缩进 */
 .msg-error {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   margin: 0 0 0 var(--indent-1);
-  padding: 8px 10px;
+  padding: 8px 12px;
   border: 1px solid rgba(248, 113, 113, 0.3);
   border-radius: 8px;
   background: rgba(248, 113, 113, 0.08);
@@ -1353,8 +1353,18 @@ body {
 
 .msg-error-icon {
   flex-shrink: 0;
-  margin-top: 1px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
   color: var(--red);
+}
+
+.msg-error-icon svg {
+  width: 15px;
+  height: 15px;
+  display: block;
 }
 
 .msg-error-text {
