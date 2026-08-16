@@ -246,10 +246,10 @@ export function usePi() {
     });
   }, []);
 
-  // 错误横幅自动消失：8 秒后清除（新错误重置计时）。
+  // 错误横幅自动消失：3 秒后清除（新错误重置计时）。
   useEffect(() => {
     if (!state.error) return;
-    const id = window.setTimeout(() => dispatch({ type: "clear-error" }), 8000);
+    const id = window.setTimeout(() => dispatch({ type: "clear-error" }), 3000);
     return () => window.clearTimeout(id);
   }, [state.error, state.errorId]);
 
