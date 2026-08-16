@@ -1433,6 +1433,11 @@ body {
   color: var(--red);
 }
 
+/* think 图标：accent 蓝（图标节点自带，覆盖 idle 中性灰） */
+.act-icon-accent {
+  color: var(--accent);
+}
+
 .act-summary {
   font-family: var(--mono);
   font-size: 11.5px;

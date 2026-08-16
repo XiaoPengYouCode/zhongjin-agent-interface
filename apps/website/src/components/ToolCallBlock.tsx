@@ -93,7 +93,7 @@ export const ThinkingBlock = memo(function ThinkingBlock({
 }) {
   return (
     <ActivityBlock
-      icon={<MdPsychology />}
+      icon={<MdPsychology className="act-icon-accent" />}
       name="think"
       summary={<span className="act-summary-live">{part.text}</span>}
       body={<div className="act-think-body">{part.text}</div>}
