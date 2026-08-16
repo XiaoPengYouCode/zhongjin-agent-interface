@@ -1365,7 +1365,8 @@ body {
 /* 活动块（Activity）— think 与工具调用共用的统一外壳：
    无框行式，整体缩进（正文最左、后台操作流靠右）。 */
 .act {
-  margin: 0 0 0 var(--indent-1);
+  /* 左缩进与正文区分；右缘对齐输入框外框（正文右缘内缩 33px，act 只内缩 24px） */
+  margin: 0 calc(var(--gutter-x) - var(--msg-inset-r)) 0 var(--indent-1);
 }
 
 /* 消息内相邻块间距：统一 --gap-block，不依赖相邻块的类型。
