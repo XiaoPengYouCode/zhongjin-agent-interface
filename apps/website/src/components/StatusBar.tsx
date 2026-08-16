@@ -192,10 +192,11 @@ function ModelCard({
 // Session stats card
 // ---------------------------------------------------------------------------
 
-function ContextRing({ percent }: { percent: number }) {
+function ContextRing({ percent }: { percent: number | null }) {
   const r = 20;
   const c = 2 * Math.PI * r;
-  const pct = Math.max(0, Math.min(percent, 100));
+  // 会话可能无 usage 数据（percent 为 null）：按 0 处理。
+  const pct = Math.max(0, Math.min(percent ?? 0, 100));
   return (
     <svg className="ctx-ring" viewBox="0 0 52 52">
       <circle className="ctx-ring-bg" cx="26" cy="26" r={r} />
@@ -214,10 +215,10 @@ function ContextRing({ percent }: { percent: number }) {
   );
 }
 
-function MiniRing({ percent }: { percent: number }) {
+function MiniRing({ percent }: { percent: number | null }) {
   const r = 6.5;
   const c = 2 * Math.PI * r;
-  const pct = Math.max(0, Math.min(percent, 100));
+  const pct = Math.max(0, Math.min(percent ?? 0, 100));
   return (
     <svg className="mini-ring" viewBox="0 0 18 18">
       <circle className="mini-ring-bg" cx="9" cy="9" r={r} />
@@ -241,7 +242,7 @@ function StatsCard({ stats, failed }: { stats?: SessionStats | null; failed: boo
     return <div className="popover-empty">加载中…</div>;
   }
 
-  const ctx = stats.contextUsage;
+  const ctx = stats?.contextUsage;
   return (
     <div className="stats-card">
       <div className="stats-main">
@@ -273,7 +274,7 @@ function StatsCard({ stats, failed }: { stats?: SessionStats | null; failed: boo
           </div>
           <div className="stats-item">
             <span className="stats-k">成本</span>
-            <span className="stats-v stats-cost">${stats.cost.toFixed(4)}</span>
+            <span className="stats-v stats-cost">${(stats.cost ?? 0).toFixed(4)}</span>
           </div>
           <div className="stats-item">
             <span className="stats-k">消息</span>
@@ -431,7 +432,7 @@ export const StatusBar = memo(function StatusBar({
             trigger={
               <span className="ctx-chip" title="上下文占用">
                 <MiniRing percent={ctx.percent} />
-                <span className="ctx-pct">{ctx.percent.toFixed(0)}%</span>
+                <span className="ctx-pct">{(ctx.percent ?? 0).toFixed(0)}%</span>
               </span>
             }
             card={<StatsCard stats={stats} failed={statsError} />}
