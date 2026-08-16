@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { pickFolder } from "../lib/fs.ts";
 import { timeAgo } from "../lib/format.ts";
-import type { ConnectionState, SessionInfo, SessionStatus } from "../lib/types.ts";
+import type { SessionInfo, SessionStatus } from "../lib/types.ts";
 
 interface SidebarProps {
   sessions: SessionInfo[];
@@ -9,7 +9,6 @@ interface SidebarProps {
   statuses: Record<string, SessionStatus>;
   currentFile: string | null;
   currentCwd: string | null;
-  conn: ConnectionState;
   onNew: (cwd?: string) => void;
   onResume: (path: string) => void;
   onDelete: (path: string) => void;
@@ -138,7 +137,6 @@ export const Sidebar = memo(function Sidebar({
   statuses,
   currentFile,
   currentCwd,
-  conn,
   onNew,
   onResume,
   onDelete,
@@ -286,20 +284,6 @@ export const Sidebar = memo(function Sidebar({
             </div>
           );
         })}
-      </div>
-
-      <div className="sidebar-foot">
-        <div className="conn-row">
-          <span className={`conn-dot conn-${conn}`} />
-          <span className="conn-text">
-            {conn === "open" ? "已连接" : conn === "connecting" ? "连接中…" : "已断开（重连中）"}
-          </span>
-        </div>
-        {currentCwd && (
-          <div className="cwd" title={currentCwd}>
-            {currentCwd}
-          </div>
-        )}
       </div>
     </aside>
   );

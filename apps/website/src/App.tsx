@@ -75,7 +75,7 @@ const THEME_META: Record<ThemeMode, { icon: ReactNode; label: string }> = {
 };
 
 export default function App() {
-  const { state, conn, sessions, statuses, actions } = usePi();
+  const { state, sessions, statuses, actions } = usePi();
   const [theme, setTheme] = useTheme();
 
   const cycleTheme = () => {
@@ -117,7 +117,6 @@ export default function App() {
         statuses={statuses}
         currentFile={state.session?.sessionFile ?? null}
         currentCwd={state.session?.cwd ?? null}
-        conn={conn}
         onNew={actions.newSession}
         onResume={actions.resume}
         onDelete={actions.deleteSession}

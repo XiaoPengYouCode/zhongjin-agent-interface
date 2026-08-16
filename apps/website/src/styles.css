@@ -485,50 +485,6 @@ body {
   background: var(--red);
 }
 
-.sidebar-foot {
-  padding: 12px 14px;
-  border-top: 1px solid var(--border-soft);
-  font-size: 13px;
-  color: var(--text-dim);
-}
-
-.conn-row {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-bottom: 6px;
-}
-
-.conn-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--text-faint);
-}
-
-.conn-dot.conn-open {
-  background: var(--green);
-  box-shadow: 0 0 6px rgba(52, 211, 153, 0.6);
-}
-
-.conn-dot.conn-connecting {
-  background: var(--amber);
-  animation: pulse 1.2s infinite;
-}
-
-.conn-dot.conn-closed {
-  background: var(--red);
-}
-
-.cwd {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--text-faint);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* ------------------------------------------------------------------ */
 /* Chat                                                                */
 /* ------------------------------------------------------------------ */
@@ -1378,12 +1334,6 @@ body {
   margin: 8px 0 0;
   max-height: 200px;
   overflow: auto;
-}
-
-@keyframes pulse {
-  50% {
-    opacity: 0.4;
-  }
 }
 
 /* 运行失败块：行式红色块，与活动块同级缩进 */
