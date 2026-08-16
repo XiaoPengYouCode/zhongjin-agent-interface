@@ -1,7 +1,7 @@
 import { Fragment, memo, useState } from "react";
-import { MdErrorOutline, MdPsychology } from "react-icons/md";
+import { MdErrorOutline } from "react-icons/md";
 import { Markdown } from "./Markdown.tsx";
-import { ToolCallBlock } from "./ToolCallBlock.tsx";
+import { ThinkingBlock, ToolCallBlock } from "./ToolCallBlock.tsx";
 import type { UiMessage, UiPart } from "../lib/types.ts";
 
 const EDIT_ICON = (
@@ -56,17 +56,6 @@ const CLOSE_ICON = (
     <path d="M18 6 6 18M6 6l12 12" />
   </svg>
 );
-
-/** 思考块：单行内联（think 标签后紧跟内容），无折叠/展开动画，会话区稳定不跳动。 */
-function ThinkingBlock({ part }: { part: Extract<UiPart, { kind: "thinking" }> }) {
-  return (
-    <div className="thinking">
-      <MdPsychology className="thinking-icon" />
-      <span className="tool-name">think</span>
-      <span className="thinking-inline">{part.text}</span>
-    </div>
-  );
-}
 
 interface UserMessageProps {
   message: UiMessage;
@@ -191,7 +180,7 @@ export const MessageBubble = memo(function MessageBubble({
           if (!part.text) return null;
           return (
             <div key={i} className="markdown-body">
-              <Markdown text={part.text} streaming={message.streaming} />
+              <Markdown text={part.text} />
             </div>
           );
         })}

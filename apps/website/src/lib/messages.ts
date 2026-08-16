@@ -79,7 +79,7 @@ function attachToolResult(messages: UiMessage[], result: ToolResultMessage): UiM
           id: result.toolCallId,
           name: result.toolName,
           args: {},
-          output: textOf(result.content),
+          output: textOf(result.content ?? ""),
           state: result.isError ? "error" : "done",
         },
       ],
@@ -123,8 +123,11 @@ export function messagesToUi(
         streaming: false,
         error: messageError(m),
       });
-    } else {
+    } else if (m.role === "toolResult") {
       out = attachToolResult(out, m);
+      continue;
+    } else {
+      // compactionSummary 等其他角色：不参与 UI 渲染，直接跳过。
       continue;
     }
     idx += 1;

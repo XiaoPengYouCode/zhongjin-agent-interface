@@ -1,8 +1,10 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo } from "react";
+import { MdPsychology } from "react-icons/md";
+import { ActivityBlock } from "./ActivityBlock.tsx";
 import { DiffView } from "./DiffView.tsx";
 import { HighlightedCommand, TerminalOutput } from "./TerminalOutput.tsx";
 import { toolIcon, toolKind, toolSummary } from "../lib/tool-format.tsx";
-import type { UiToolCall } from "../lib/types.ts";
+import type { UiPart, UiToolCall } from "../lib/types.ts";
 
 interface EditEntry {
   oldText?: string;
@@ -66,68 +68,35 @@ function ToolBody({ part }: { part: UiToolCall }) {
   return part.output ? <TerminalOutput output={part.output} /> : null;
 }
 
+/** 工具调用块：ActivityBlock 外壳 + 工具专属摘要与内容渲染。 */
 export const ToolCallBlock = memo(function ToolCallBlock({ part }: { part: UiToolCall }) {
   const summary = toolSummary(part.name, (part.args ?? {}) as Record<string, unknown>);
-  // 默认折叠：执行中也不自动展开，会话区高度稳定不跳动；用户可手动展开。
-  const [open, setOpen] = useState(false);
-  const outRef = useRef<HTMLDivElement>(null);
-  const collapseRef = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number | undefined>(0);
-
-  // 高度：执行中不设高度（自然高度，输出实时增长无需逐 chunk 测量）；
-  // 非执行中展开时测量内容高度（供折叠动画使用），折叠时归零。
-  // 手动展开优先于 running：执行中用户展开即看实时输出。
-  useEffect(() => {
-    const el = collapseRef.current;
-    if (!el) return;
-    if (!open) {
-      setHeight(0);
-      return;
-    }
-    if (part.state === "running") {
-      setHeight(undefined);
-      return;
-    }
-    const id = requestAnimationFrame(() => setHeight(el.scrollHeight));
-    return () => cancelAnimationFrame(id);
-  }, [open, part.state]);
-
-  // 展开/折叠的高度动画由 .tool-collapse 的 height 过渡驱动，外层自动滚动由
-  // MessageList 的 ResizeObserver 跟随（贴底时生效），无需广播事件。
-  // 执行中让输出区内部滚动跟随最新内容（外层滚动到此即可看到结尾）。
-  // 移入 rAF：避免每 chunk 同步写 scrollTop 强制布局。
-  useEffect(() => {
-    if (part.state !== "running") return;
-    const id = requestAnimationFrame(() => {
-      if (outRef.current) outRef.current.scrollTop = outRef.current.scrollHeight;
-    });
-    return () => cancelAnimationFrame(id);
-  }, [part.output, part.state]);
-
   return (
-    <div className={`tool-call tool-${part.state}`}>
-      <button className="tool-call-head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <span className="tool-kind-icon">{toolIcon(part.name)}</span>
-        <span className="tool-name">{part.name}</span>
-        <span className="tool-summary" title={summary.text}>
-          {summary.node}
-        </span>
-        {part.state === "running" && <span className="spinner" aria-label="running" />}
-      </button>
-      <div
-        className="tool-body-collapse"
-        ref={collapseRef}
-        style={{
-          height,
-          // 执行中不设高度（自然高度），无需过渡；
-          // 手动开合（非执行中）才走平滑动画。
-          transition: part.state === "running" ? "none" : undefined,
-        }}
-      >
-        <div className="tool-body" ref={outRef}>
-          <ToolBody part={part} />
-        </div>
-      </div>
-    </div>
+    <ActivityBlock
+      icon={toolIcon(part.name)}
+      name={part.name}
+      summary={summary.node}
+      body={<ToolBody part={part} />}
+      running={part.state === "running"}
+      tone={part.state}
+    />
+  );
+});
+
+/** 思考块：与工具调用同一 ActivityBlock 外壳。
+ *  头部摘要为单行窗（只显示最新一行，流式与结束后一致）；
+ *  主体为思考全文（默认收起，可手动展开查看）。 */
+export const ThinkingBlock = memo(function ThinkingBlock({
+  part,
+}: {
+  part: Extract<UiPart, { kind: "thinking" }>;
+}) {
+  return (
+    <ActivityBlock
+      icon={<MdPsychology />}
+      name="think"
+      summary={<span className="act-summary-live">{part.text}</span>}
+      body={<div className="act-think-body">{part.text}</div>}
+    />
   );
 });

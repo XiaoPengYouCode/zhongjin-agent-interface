@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import { pickFolder } from "../lib/fs.ts";
+import { timeAgo } from "../lib/format.ts";
 import type { ConnectionState, SessionInfo, SessionStatus } from "../lib/types.ts";
 
 interface SidebarProps {
@@ -96,6 +97,12 @@ export const Sidebar = memo(function Sidebar({
   onResume,
 }: SidebarProps) {
   const [query, setQuery] = useState("");
+  // 每分钟重渲染一次，让会话相对时间（timeAgo）保持新鲜。
+  const [, setNow] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setNow((n) => n + 1), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
   // Groups the user manually expanded (persisted). The group containing the
   // active session is always shown expanded.
   const [expanded, setExpanded] = useState<Set<string>>(() => {
@@ -217,7 +224,10 @@ export const Sidebar = memo(function Sidebar({
                       className={`session-item ${s.path === currentFile ? "active" : ""}`}
                       onClick={() => onResume(s.path)}
                     >
-                      <div className="session-title">{titleOf(s)}</div>
+                      <div className="session-item-main">
+                        <div className="session-title">{titleOf(s)}</div>
+                        <div className="session-time">{timeAgo(s.modified)}</div>
+                      </div>
                       {status && <SessionIndicator status={status} />}
                     </button>
                   );
