@@ -1372,12 +1372,17 @@ body {
   margin-top: calc(-28px + var(--block-gap));
 }
 
+/* 活动块之间比正文段更紧凑：连续工具/思考块视觉上归组 */
+.msg-bubble > .act + .act {
+  margin-top: 6px;
+}
+
 .act-head {
   width: 100%;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 6px;
+  padding: 1px 6px;
   border: none;
   background: transparent;
   border-radius: 6px;
@@ -1490,7 +1495,7 @@ body {
 
 /* 输出内容：缩进对齐 + 左侧引用线，无外框 */
 .act-body {
-  margin: 2px 0 6px 24px;
+  margin: 0 0 4px 24px;
   border-left: 2px solid var(--border);
   padding-left: 12px;
   max-height: 320px;
