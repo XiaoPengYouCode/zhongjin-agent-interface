@@ -543,7 +543,10 @@ const server = createServer(async (req, res) => {
     }
     if (pathname === "/api/settings" || pathname === "/api/settings/file") {
       // Settings 路由在独立模块（settings.ts）中处理。
-      if (await handleSettingsRequest(req, res, url, getAgentDir(), cwd)) return;
+      // 项目文件（AGENTS.md）跟随当前活跃会话的 cwd（会话头为准），
+      // 而不是服务端启动目录 —— 切换/恢复会话后仍指向正确的项目。
+      const sessionCwd = service.session.sessionManager.getCwd() || service.cwd;
+      if (await handleSettingsRequest(req, res, url, getAgentDir(), sessionCwd)) return;
     }
     if (pathname === "/api/stats") {
       sendJson(res, 200, service.getStats());
