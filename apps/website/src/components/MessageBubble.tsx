@@ -1,4 +1,4 @@
-import { Fragment, memo, useEffect, useRef, useState } from "react";
+import { Fragment, memo, useState } from "react";
 import { MdErrorOutline, MdPsychology } from "react-icons/md";
 import { Markdown } from "./Markdown.tsx";
 import { ToolCallBlock } from "./ToolCallBlock.tsx";
@@ -57,63 +57,13 @@ const CLOSE_ICON = (
   </svg>
 );
 
-function ThinkingBlock({
-  part,
-  streaming,
-}: {
-  part: Extract<UiPart, { kind: "thinking" }>;
-  streaming: boolean;
-}) {
-  // 流式中强制展开（单行窗）；结束后保持展开，可手动收起；历史消息默认收起。
-  const [open, setOpen] = useState(streaming);
-  const everStreamed = useRef(streaming);
-  useEffect(() => {
-    if (streaming) {
-      setOpen(true);
-      everStreamed.current = true;
-    } else if (everStreamed.current) {
-      // 流式结束：自动保持展开，避免 20px 单行窗瞬间消失造成跳动。
-      setOpen(true);
-    }
-  }, [streaming]);
-
-  const collapseRef = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number | undefined>(streaming ? 20 : 0);
-
-  // 展开/收起/流式结束时把容器高度过渡到目标高度（流式期间固定 20px 单行窗，
-  // 结束后动画展开到全文高度，上限 260px 由 .thinking-text 的 max-height 控制）。
-  useEffect(() => {
-    const el = collapseRef.current;
-    if (!el) return;
-    if (!open) {
-      setHeight(0);
-      return;
-    }
-    const id = requestAnimationFrame(() => setHeight(streaming ? 20 : el.scrollHeight));
-    return () => cancelAnimationFrame(id);
-  }, [open, streaming]);
-
-  // 展开/收起/流式结束的高度动画由 .thinking-collapse 的 height 过渡驱动，
-  // 外层自动滚动由 MessageList 的 ResizeObserver 跟随（贴底时生效），无需广播。
+/** 思考块：单行内联（think 标签后紧跟内容），无折叠/展开动画，会话区稳定不跳动。 */
+function ThinkingBlock({ part }: { part: Extract<UiPart, { kind: "thinking" }> }) {
   return (
     <div className="thinking">
-      <button className="thinking-head" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        <MdPsychology className="thinking-icon" />
-        <span className="tool-name">think</span>
-      </button>
-      <div
-        className="thinking-collapse"
-        ref={collapseRef}
-        style={{
-          height,
-          // 流式期间固定单行窗高度，无需过渡；结束展开与手动开合走平滑动画。
-          transition: streaming ? "none" : undefined,
-        }}
-      >
-        <div className={streaming ? "thinking-text thinking-text-live" : "thinking-text"}>
-          {part.text}
-        </div>
-      </div>
+      <MdPsychology className="thinking-icon" />
+      <span className="tool-name">think</span>
+      <span className="thinking-inline">{part.text}</span>
     </div>
   );
 }
@@ -216,7 +166,7 @@ export const MessageBubble = memo(function MessageBubble({
             let j = i + 1;
             while (j < message.parts.length && message.parts[j].kind === "thinking") j++;
             if (j < message.parts.length && message.parts[j].kind === "toolCall") return null;
-            return <ThinkingBlock key={i} part={part} streaming={message.streaming} />;
+            return <ThinkingBlock key={i} part={part} />;
           }
           if (part.kind === "toolCall") {
             // 紧跟其后的思考块（含连续多个）：渲染在工具块之后，
@@ -231,7 +181,7 @@ export const MessageBubble = memo(function MessageBubble({
               <Fragment key={i}>
                 <ToolCallBlock key={part.id} part={part} />
                 {before.map((p, k) => (
-                  <ThinkingBlock key={k} part={p} streaming={message.streaming} />
+                  <ThinkingBlock key={k} part={p} />
                 ))}
               </Fragment>
             );

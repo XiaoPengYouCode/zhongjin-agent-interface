@@ -68,22 +68,15 @@ function ToolBody({ part }: { part: UiToolCall }) {
 
 export const ToolCallBlock = memo(function ToolCallBlock({ part }: { part: UiToolCall }) {
   const summary = toolSummary(part.name, (part.args ?? {}) as Record<string, unknown>);
-  const [open, setOpen] = useState(part.state === "running");
+  // 默认折叠：执行中也不自动展开，会话区高度稳定不跳动；用户可手动展开。
+  const [open, setOpen] = useState(false);
   const outRef = useRef<HTMLDivElement>(null);
   const collapseRef = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number | undefined>(
-    part.state === "running" ? undefined : 0,
-  );
-
-  // 执行中自动展开；结束后保持展开（不自动收起——连续工具调用时反复
-  // 展开/收起是“忽闪忽闪”的主因），用户可手动折叠。
-  useEffect(() => {
-    if (part.state === "running") setOpen(true);
-  }, [part.state]);
+  const [height, setHeight] = useState<number | undefined>(0);
 
   // 高度：执行中不设高度（自然高度，输出实时增长无需逐 chunk 测量）；
   // 非执行中展开时测量内容高度（供折叠动画使用），折叠时归零。
-  // 折叠优先于 running：执行中用户手动收起也应生效（否则收起后又被拽开）。
+  // 手动展开优先于 running：执行中用户展开即看实时输出。
   useEffect(() => {
     const el = collapseRef.current;
     if (!el) return;

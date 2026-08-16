@@ -1166,68 +1166,39 @@ body {
   display: inline-block;
 }
 
-/* Thinking — 内敛无框：整体缩进，让正文保持最左突出 */
+/* Thinking — 单行内联：think 标签后紧跟内容，无折叠/展开动画，稳定不跳动 */
 .thinking {
-  margin: 0 0 0 20px;
-}
-
-.thinking-head {
-  width: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
-  padding: 2px 6px;
-  border: none;
-  background: transparent;
-  border-radius: 6px;
-  font-family: var(--mono);
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  user-select: none;
-}
-
-.thinking-head:hover {
-  background: var(--bg-hover);
+  margin: 0 0 0 20px;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-dim);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .thinking-icon {
   width: 12px;
   height: 12px;
   flex-shrink: 0;
+  margin-top: 3px;
   color: var(--accent);
 }
 
-.thinking-head .tool-name {
+.thinking .tool-name {
+  font-family: var(--mono);
   font-size: 11.5px;
-  color: var(--text-dim);
+  font-style: normal;
+  flex-shrink: 0;
 }
 
-/* 思考内容折叠容器：展开/收起与流式结束展开的平滑高度动画 */
-.thinking-collapse {
-  overflow: hidden;
-  transition: height 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.thinking-text {
-  margin: 4px 0 6px 25px;
-  font-size: 13px;
-  font-style: italic;
-  color: var(--text-dim);
-  white-space: pre-wrap;
-  max-height: 260px;
-  overflow-y: auto;
-}
-
-/* 思考进行中：一行高的视窗，文字从底部向上滚动，显示最新一行 */
-.thinking-text-live {
-  height: 20px;
-  margin: 0; /* 流式期间不占上下边距，折叠容器固定 20px 恰好容纳 */
-  max-height: none;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
+/* 思考内容：跟随标签之后，继承容器的斜体/暗色样式 */
+.thinking-inline {
+  min-width: 0;
+  flex: 1;
 }
 
 /* 运行失败块：行式红色块，与 thinking/tool 同级缩进 */
