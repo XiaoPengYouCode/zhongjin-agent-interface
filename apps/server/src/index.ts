@@ -221,6 +221,7 @@ type ClientMessage =
   | { type: "abort" }
   | { type: "newSession"; cwd?: string }
   | { type: "resume"; path: string }
+  | { type: "renameSession"; name: string }
   | { type: "ping" };
 
 const clients = new Set<WebSocket>();
@@ -262,6 +263,8 @@ function sessionState() {
     sessionFile: session.sessionFile ?? null,
     // The active session's own folder (from its header) is authoritative.
     cwd: session.sessionManager.getCwd() || service.cwd,
+    // 会话显示名（session_info 条目，TUI 重命名同一来源）。
+    name: service.getSessionName() ?? null,
     // 真实流式状态：agent_end 后 compaction/retry/continuation 期间 SDK 仍在处理，
     // 不能用事件驱动变量（agent_end 广播早于真正空闲），否则客户端会误判为可发送。
     streaming: session.isStreaming,
@@ -306,6 +309,12 @@ async function handleClientMessage(ws: WebSocket, msg: ClientMessage) {
     }
     case "resume": {
       await switchService(await openOrReuse(msg.path));
+      send(ws, { type: "session", session: sessionState() });
+      return;
+    }
+    case "renameSession": {
+      service.renameSession(msg.name);
+      invalidateSessionsCache();
       send(ws, { type: "session", session: sessionState() });
       return;
     }

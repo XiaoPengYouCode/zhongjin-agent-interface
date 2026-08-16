@@ -97,6 +97,19 @@ export default function App() {
     [theme],
   );
 
+  // 会话标题兜底：无自定义名时用第一条用户消息（与侧边栏 titleOf 一致）。
+  const fallbackTitle = useMemo(() => {
+    const m = state.session?.messages.find((x) => x.role === "user");
+    let text = "";
+    if (m) {
+      text =
+        typeof m.content === "string"
+          ? m.content
+          : m.content.map((c) => (c.type === "text" ? c.text : "")).join("");
+    }
+    return text.replace(/\s+/g, " ").trim().slice(0, 40) || "新会话";
+  }, [state.session]);
+
   return (
     <div className="app">
       <Sidebar
@@ -116,9 +129,12 @@ export default function App() {
           sessionId={state.session?.sessionId ?? ""}
           sessionFile={state.session?.sessionFile ?? null}
           cwd={state.session?.cwd ?? ""}
+          sessionName={state.session?.name ?? null}
+          fallbackTitle={fallbackTitle}
           themeToggle={themeToggle}
           onSetModel={actions.setModel}
           onSetThinkingLevel={actions.setThinkingLevel}
+          onRenameSession={actions.renameSession}
         />
 
         {state.error && (

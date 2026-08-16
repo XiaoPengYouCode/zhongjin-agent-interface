@@ -481,13 +481,58 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
-.status-streaming {
-  color: var(--accent);
-  display: flex;
+/* 会话标题：无自定义名时兜底显示首条消息摘要，点击重命名 */
+.session-title-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
+  max-width: 420px;
+  padding: 3px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 13.5px;
+  color: var(--text);
+  cursor: text;
+}
+
+.session-title-btn:hover {
+  background: var(--bg-hover);
+}
+
+.session-title-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.session-title-edit {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  color: var(--text-faint);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.session-title-btn:hover .session-title-edit {
+  opacity: 1;
+}
+
+.session-title-input {
+  width: 380px;
+  max-width: 60vw;
+  padding: 3px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--bg-elev);
+  color: var(--text);
+  font-size: 13.5px;
+  font-family: inherit;
+  outline: none;
 }
 
 .status-right {
@@ -1155,15 +1200,6 @@ body {
   50% {
     opacity: 0.4;
   }
-}
-
-.pulse-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  animation: pulse 1.1s infinite;
-  display: inline-block;
 }
 
 /* Thinking — 单行内联：think 标签后紧跟内容，无折叠/展开动画，稳定不跳动 */

@@ -83,6 +83,16 @@ export class PiService {
     return this.session.sessionFile;
   }
 
+  /** 会话名称（session_info 条目，与 TUI 命名同一机制）。 */
+  getSessionName(): string | undefined {
+    return this.session.sessionManager.getSessionName();
+  }
+
+  /** 会话重命名：写入 session_info 条目。 */
+  renameSession(name: string): void {
+    this.session.sessionManager.appendSessionInfo(name);
+  }
+
   /** Snapshot of the pending steering / follow-up queues. */
   getQueue(): { steering: readonly string[]; followUp: readonly string[] } {
     return {

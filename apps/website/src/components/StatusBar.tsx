@@ -12,9 +12,14 @@ interface StatusBarProps {
   sessionId: string;
   sessionFile: string | null;
   cwd: string;
+  /** 会话显示名（无自定义名时为 null）。 */
+  sessionName: string | null;
+  /** 无自定义名时的兜底标题（首条消息摘要 / 新会话）。 */
+  fallbackTitle: string;
   themeToggle?: ReactNode;
   onSetModel: (provider: string, id: string) => Promise<void>;
   onSetThinkingLevel: (level: string) => Promise<void>;
+  onRenameSession: (name: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -281,6 +286,79 @@ function StatsCard({ stats, failed }: { stats?: SessionStats | null; failed: boo
 }
 
 // ---------------------------------------------------------------------------
+// Session title (click to rename)
+// ---------------------------------------------------------------------------
+
+const PENCIL_ICON = (
+  <svg
+    className="session-title-edit"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+  </svg>
+);
+
+function SessionTitle({
+  name,
+  fallback,
+  onRename,
+}: {
+  name: string | null;
+  fallback: string;
+  onRename: (name: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(name ?? "");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!editing) return;
+    const el = inputRef.current;
+    if (el) {
+      el.focus();
+      el.select();
+    }
+  }, [editing]);
+
+  const commit = () => {
+    setEditing(false);
+    const v = value.trim();
+    if (v && v !== name) onRename(v);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        className="session-title-input"
+        value={value}
+        placeholder={fallback}
+        maxLength={80}
+        spellCheck={false}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          else if (e.key === "Escape") setEditing(false);
+        }}
+      />
+    );
+  }
+
+  return (
+    <button className="session-title-btn" title="点击重命名会话" onClick={() => setEditing(true)}>
+      <span className="session-title-text">{name || fallback}</span>
+      {PENCIL_ICON}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Status bar
 // ---------------------------------------------------------------------------
 
@@ -290,9 +368,12 @@ export const StatusBar = memo(function StatusBar({
   sessionId,
   sessionFile,
   cwd,
+  sessionName,
+  fallbackTitle,
   themeToggle,
   onSetModel,
   onSetThinkingLevel,
+  onRenameSession,
 }: StatusBarProps) {
   const queryClient = useQueryClient();
 
@@ -313,10 +394,8 @@ export const StatusBar = memo(function StatusBar({
   return (
     <header className="statusbar">
       <span className="status-left">
-        {streaming && (
-          <span className="status-streaming">
-            <span className="pulse-dot" /> 处理中
-          </span>
+        {sessionId && (
+          <SessionTitle name={sessionName} fallback={fallbackTitle} onRename={onRenameSession} />
         )}
       </span>
       <span className="status-right">

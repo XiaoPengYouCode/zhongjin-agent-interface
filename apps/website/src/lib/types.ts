@@ -27,6 +27,8 @@ export interface SessionState {
   sessionId: string;
   sessionFile: string | null;
   cwd: string;
+  /** 会话显示名（session_info 条目），无自定义名时为 null。 */
+  name?: string | null;
   streaming: boolean;
   model: { provider: string; id: string; name: string } | null;
   messages: AgentMessage[];
@@ -56,6 +58,7 @@ export type ClientMessage =
   | { type: "abort" }
   | { type: "newSession"; cwd?: string }
   | { type: "resume"; path: string }
+  | { type: "renameSession"; name: string }
   | { type: "ping" };
 
 // ---------------------------------------------------------------------------
