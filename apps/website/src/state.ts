@@ -20,13 +20,15 @@ export interface PiState {
   queuedFollowUps: string[];
   queuedSteers: string[];
   error: string | null;
+  /** 错误序号：每次新错误递增，供自动消失计时（相同错误重复出现也重置）。 */
+  errorId: number;
 }
 
 type Action =
   | { type: "reset-session"; session: SessionState }
   | { type: "agent-event"; event: AgentSessionEvent }
   | { type: "agent-events"; events: AgentSessionEvent[] }
-  | { type: "error"; message: string }
+  | { type: "error"; message: string; id: number }
   | { type: "clear-error" };
 
 const initialState: PiState = {
@@ -36,6 +38,7 @@ const initialState: PiState = {
   queuedFollowUps: [],
   queuedSteers: [],
   error: null,
+  errorId: 0,
 };
 
 function reducer(state: PiState, action: Action): PiState {
@@ -102,7 +105,7 @@ function reducer(state: PiState, action: Action): PiState {
       };
     }
     case "error":
-      return { ...state, error: action.message };
+      return { ...state, error: action.message, errorId: action.id };
     case "clear-error":
       return { ...state, error: null };
   }
@@ -220,7 +223,7 @@ export function usePi() {
             break;
           }
           case "error":
-            dispatch({ type: "error", message: msg.message });
+            reportError(msg.message);
             break;
         }
       } finally {
@@ -232,13 +235,34 @@ export function usePi() {
     return () => client.close();
   }, [queryClient, refreshSession]);
 
-  const send = useCallback((msg: ClientMessage) => {
-    try {
-      clientRef.current?.send(msg);
-    } catch (err) {
-      dispatch({ type: "error", message: err instanceof Error ? err.message : String(err) });
-    }
+  // 错误序号：每次新错误递增，保证相同错误重复出现时自动消失计时也重置。
+  const errorSeq = useRef(0);
+  const reportError = useCallback((err: unknown) => {
+    errorSeq.current += 1;
+    dispatch({
+      type: "error",
+      message: err instanceof Error ? err.message : String(err),
+      id: errorSeq.current,
+    });
   }, []);
+
+  // 错误横幅自动消失：8 秒后清除（新错误重置计时）。
+  useEffect(() => {
+    if (!state.error) return;
+    const id = window.setTimeout(() => dispatch({ type: "clear-error" }), 8000);
+    return () => window.clearTimeout(id);
+  }, [state.error, state.errorId]);
+
+  const send = useCallback(
+    (msg: ClientMessage) => {
+      try {
+        clientRef.current?.send(msg);
+      } catch (err) {
+        reportError(err);
+      }
+    },
+    [reportError],
+  );
 
   // 切换模型 / think 等级：mutation，成功后失效模型缓存并刷新会话状态。
   const modelMutation = useMutation({
@@ -265,10 +289,10 @@ export function usePi() {
           sessionId: state.session?.sessionId ?? "",
         });
       } catch (err) {
-        dispatch({ type: "error", message: err instanceof Error ? err.message : String(err) });
+        reportError(err);
       }
     },
-    [modelMutation, state.session?.sessionId],
+    [modelMutation, state.session?.sessionId, reportError],
   );
 
   const setThinkingLevel = useCallback(
@@ -276,10 +300,10 @@ export function usePi() {
       try {
         await thinkingMutation.mutateAsync(level);
       } catch (err) {
-        dispatch({ type: "error", message: err instanceof Error ? err.message : String(err) });
+        reportError(err);
       }
     },
-    [thinkingMutation],
+    [thinkingMutation, reportError],
   );
 
   const actions = useMemo<PiActions>(
