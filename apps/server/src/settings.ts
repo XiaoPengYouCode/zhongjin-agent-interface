@@ -13,6 +13,7 @@ export function settingsFiles(agentDir: string, cwd: string): Record<string, str
     "models.json": join(agentDir, "models.json"),
     "auth.json": join(agentDir, "auth.json"),
     "agents.md": join(cwd, "AGENTS.md"),
+    "agents.system.md": join(agentDir, "AGENTS.md"),
   };
 }
 

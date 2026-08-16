@@ -14,7 +14,7 @@ const SECTIONS: Array<{ id: SectionId; label: string; desc: string }> = [
   { id: "models", label: "模型", desc: "默认模型选择" },
   { id: "auth", label: "认证", desc: "API Key 管理" },
   { id: "files", label: "配置文件", desc: "settings / models / auth" },
-  { id: "agents", label: "AGENTS.md", desc: "项目级指令" },
+  { id: "agents", label: "AGENTS.md", desc: "项目/系统指令" },
 ];
 
 /** 保存反馈条：保存中 / 已保存 / 错误。 */
@@ -139,7 +139,9 @@ function GeneralPane() {
         <div className="settings-row-label">项目目录</div>
         <code className="settings-path">{data?.cwd ?? "…"}</code>
       </div>
-      <p className="settings-hint">会话与模型配置存放在 agent 目录；AGENTS.md 按项目生效。</p>
+      <p className="settings-hint">
+        会话与模型配置存放在 agent 目录；AGENTS.md 项目级按项目生效，系统级对所有项目生效。
+      </p>
     </div>
   );
 }
@@ -505,9 +507,42 @@ function FilesPane() {
   );
 }
 
-/** AGENTS.md：项目级指令编辑。 */
+/** AGENTS.md：项目级 / 系统级指令编辑。 */
+const AGENT_FILES: Array<{ name: string; label: string }> = [
+  { name: "agents.md", label: "项目 AGENTS.md" },
+  { name: "agents.system.md", label: "系统 AGENTS.md" },
+];
+
 function AgentsPane() {
-  return <FileEditor name="agents.md" label="AGENTS.md（项目级）" json={false} />;
+  const [active, setActive] = useState<string>("agents.md");
+  const { data } = useQuery({ queryKey: qk.settings, queryFn: fetchSettings });
+  const exists = (name: string) => data?.files.find((f) => f.name === name)?.exists;
+  return (
+    <div className="settings-pane">
+      <h2 className="settings-title">AGENTS.md</h2>
+      <p className="settings-desc">
+        项目 AGENTS.md 按项目生效；系统 AGENTS.md（~/.pi/agent/AGENTS.md）对所有项目生效。
+      </p>
+      <div className="settings-file-tabs">
+        {AGENT_FILES.map((f) => (
+          <button
+            key={f.name}
+            className={`settings-file-tab ${active === f.name ? "active" : ""}`}
+            onClick={() => setActive(f.name)}
+          >
+            {f.label}
+            {exists(f.name) === false && <span className="settings-file-new">（新建）</span>}
+          </button>
+        ))}
+      </div>
+      <FileEditor
+        key={active}
+        name={active}
+        label={active === "agents.md" ? "AGENTS.md（项目级）" : "AGENTS.md（系统级）"}
+        json={false}
+      />
+    </div>
+  );
 }
 
 export const SettingsView = memo(function SettingsView() {
