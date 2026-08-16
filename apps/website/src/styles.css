@@ -2388,3 +2388,82 @@ body {
   width: 15px;
   height: 15px;
 }
+
+/* 认证（API Key） */
+.auth-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.auth-provider {
+  width: 130px;
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.auth-provider-input {
+  width: 130px;
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elev);
+  color: var(--text);
+  font-size: 12.5px;
+  font-family: var(--mono);
+  outline: none;
+}
+
+.auth-provider-input:focus,
+.auth-key:focus {
+  border-color: var(--accent);
+}
+
+.auth-key-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.auth-key {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elev);
+  color: var(--text);
+  font-size: 12.5px;
+  font-family: var(--mono);
+  outline: none;
+}
+
+.auth-key-wrap .icon-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.auth-key-wrap .icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.auth-key-wrap .icon-btn svg {
+  width: 14px;
+  height: 14px;
+}

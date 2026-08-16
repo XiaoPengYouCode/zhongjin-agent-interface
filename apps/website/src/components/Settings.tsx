@@ -7,12 +7,13 @@ import { qk } from "../lib/queries.ts";
 import { usePiApi } from "../router.tsx";
 import type { ThemeMode } from "../lib/theme.ts";
 
-type SectionId = "general" | "models" | "files" | "agents";
+type SectionId = "general" | "models" | "auth" | "files" | "agents";
 
 const SECTIONS: Array<{ id: SectionId; label: string; desc: string }> = [
   { id: "general", label: "通用", desc: "主题与路径" },
   { id: "models", label: "模型", desc: "默认模型选择" },
-  { id: "files", label: "配置文件", desc: "settings.json / models.json" },
+  { id: "auth", label: "认证", desc: "API Key 管理" },
+  { id: "files", label: "配置文件", desc: "settings / models / auth" },
   { id: "agents", label: "AGENTS.md", desc: "项目级指令" },
 ];
 
@@ -268,7 +269,217 @@ function useMemoProviders(models: Array<{ provider: string }> | undefined): stri
   return [...new Set((models ?? []).map((m) => m.provider))];
 }
 
-/** 配置文件：settings.json / models.json 直接编辑。 */
+/** 认证：API Key 管理（auth.json）。 */
+function AuthPane() {
+  const queryClient = useQueryClient();
+  const { data } = useQuery({
+    queryKey: qk.settingsFile("auth.json"),
+    queryFn: () => fetchSettingsFile("auth.json"),
+  });
+  const [entries, setEntries] = useState<Record<string, { key: string; show: boolean }> | null>(
+    null,
+  );
+  const [newName, setNewName] = useState("");
+  const [newKey, setNewKey] = useState("");
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [error, setError] = useState<string | undefined>(undefined);
+
+  // 当前条目：优先本地编辑态，否则从文件内容解析。
+  const parsed: Record<string, { key: string; show: boolean }> | null =
+    entries ?? parseAuth(data?.content ?? "");
+
+  const setKey = (p: string, key: string) => {
+    setEntries((prev) => {
+      const base = prev ?? parsed ?? {};
+      return { ...base, [p]: { key, show: base[p]?.show ?? false } };
+    });
+    setStatus("idle");
+  };
+  const remove = (p: string) => {
+    setEntries((prev) => {
+      const base = { ...(prev ?? parsed) };
+      delete base[p];
+      return base;
+    });
+    setStatus("idle");
+  };
+  const add = () => {
+    const name = newName.trim();
+    if (!name || !newKey.trim()) return;
+    setEntries((prev) => ({
+      ...(prev ?? parsed),
+      [name]: { key: newKey.trim(), show: false },
+    }));
+    setNewName("");
+    setNewKey("");
+    setStatus("idle");
+  };
+
+  const save = () => {
+    if (!parsed) return;
+    const obj: Record<string, { type: string; key: string }> = {};
+    for (const [p, e] of Object.entries(parsed)) {
+      if (!e.key.trim()) continue; // 空 key 条目视为删除
+      obj[p] = { type: "api_key", key: e.key.trim() };
+    }
+    setStatus("saving");
+    saveSettingsFile("auth.json", JSON.stringify(obj, null, 2))
+      .then(() => {
+        setStatus("saved");
+        void queryClient.invalidateQueries({ queryKey: qk.settingsFile("auth.json") });
+      })
+      .catch((err) => {
+        setStatus("error");
+        setError(err instanceof Error ? err.message : String(err));
+      });
+  };
+
+  const providers = Object.keys(parsed ?? {});
+  return (
+    <div className="settings-pane">
+      <h2 className="settings-title">认证</h2>
+      <p className="settings-desc">
+        管理各 provider 的 API Key（写入 auth.json）。Key 显示/隐藏可切换。
+      </p>
+      {!parsed ? (
+        <div className="settings-muted">加载中…</div>
+      ) : (
+        <>
+          {providers.map((p) => (
+            <div key={p} className="auth-row">
+              <span className="auth-provider">{p}</span>
+              <div className="auth-key-wrap">
+                <input
+                  className="auth-key"
+                  type={parsed[p].show ? "text" : "password"}
+                  value={parsed[p].key}
+                  onChange={(e) => setKey(p, e.target.value)}
+                  placeholder="API Key"
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+                <button
+                  className="icon-btn"
+                  onClick={() =>
+                    setEntries((prev) => ({
+                      ...(prev ?? parsed),
+                      [p]: { key: parsed[p].key, show: !parsed[p].show },
+                    }))
+                  }
+                  title={parsed[p].show ? "隐藏" : "显示"}
+                >
+                  {parsed[p].show ? EYE_OFF_ICON : EYE_ICON}
+                </button>
+                <button
+                  className="icon-btn"
+                  onClick={() => remove(p)}
+                  title="移除该 provider 的 Key"
+                >
+                  {TRASH_ICON_AUTH}
+                </button>
+              </div>
+            </div>
+          ))}
+          <div className="auth-row">
+            <input
+              className="auth-provider-input"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="provider 名（如 openai）"
+              spellCheck={false}
+            />
+            <div className="auth-key-wrap">
+              <input
+                className="auth-key"
+                type="password"
+                value={newKey}
+                onChange={(e) => setNewKey(e.target.value)}
+                placeholder="新 API Key"
+                spellCheck={false}
+                autoComplete="off"
+              />
+              <button
+                className="btn btn-ghost btn-xs"
+                onClick={add}
+                disabled={!newName.trim() || !newKey.trim()}
+              >
+                添加
+              </button>
+            </div>
+          </div>
+          <div className="settings-actions">
+            <button className="btn" onClick={save} disabled={status === "saving"}>
+              {status === "saving" ? "保存中…" : "保存"}
+            </button>
+            <SaveStatus status={status} error={error} />
+          </div>
+          <p className="settings-hint">
+            保存时清空 key 的条目会被移除；保存后需重启 agent 会话或新建任务生效。
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
+function parseAuth(content: string): Record<string, { key: string; show: boolean }> | null {
+  try {
+    const o = JSON.parse(content) as Record<string, { type?: string; key?: string }>;
+    const out: Record<string, { key: string; show: boolean }> = {};
+    for (const [p, v] of Object.entries(o)) {
+      if (v && typeof v === "object" && typeof v.key === "string") {
+        out[p] = { key: v.key, show: false };
+      }
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+const EYE_ICON = (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const EYE_OFF_ICON = (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+    <path d="M1 1l22 22" />
+  </svg>
+);
+
+const TRASH_ICON_AUTH = (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+    <path d="M10 11v6M14 11v6" />
+  </svg>
+);
+
+/** 配置文件：settings.json / models.json / auth.json 直接编辑。 */
 function FilesPane() {
   const [active, setActive] = useState<string>("settings.json");
   const { data } = useQuery({ queryKey: qk.settings, queryFn: fetchSettings });
@@ -324,6 +535,7 @@ export const SettingsView = memo(function SettingsView() {
       <div className="settings-main">
         {section === "general" && <GeneralPane />}
         {section === "models" && <ModelsPane />}
+        {section === "auth" && <AuthPane />}
         {section === "files" && <FilesPane />}
         {section === "agents" && <AgentsPane />}
       </div>
