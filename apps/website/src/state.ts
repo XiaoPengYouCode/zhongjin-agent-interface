@@ -82,10 +82,24 @@ function reducer(state: PiState, action: Action): PiState {
     // 不能丢），一次 dispatch 一次渲染。
     case "agent-events": {
       let messages = state.messages;
+      // queue_update 与流式事件同帧合并：clear→refill 的中间空态不渲染，
+      // 排队↔引导切换时只应用最终队列（否则 1→0→1 会闪一下）。
+      let followUps: string[] | null = null;
+      let steers: string[] | null = null;
       for (const event of action.events) {
         messages = applyEvent(messages, event);
+        if (event.type === "queue_update") {
+          followUps = [...event.followUp];
+          steers = [...event.steering];
+        }
       }
-      return { ...state, messages };
+      return {
+        ...state,
+        messages,
+        ...(followUps !== null && steers !== null
+          ? { queuedFollowUps: followUps, queuedSteers: steers }
+          : {}),
+      };
     }
     case "error":
       return { ...state, error: action.message };
@@ -166,7 +180,10 @@ export function usePi() {
       if (!rafId) rafId = requestAnimationFrame(flushNow);
     };
     const isHighFreq = (e: AgentSessionEvent): boolean =>
-      e.type === "message_update" || e.type === "tool_execution_update";
+      e.type === "message_update" ||
+      e.type === "tool_execution_update" ||
+      // 队列切换（clear→refill 多条事件）同帧合并，避免 1→0→1 闪烁。
+      e.type === "queue_update";
 
     client.onMessage((msg) => {
       const p = perf.mark();

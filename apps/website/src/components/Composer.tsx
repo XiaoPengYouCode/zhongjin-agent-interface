@@ -326,9 +326,10 @@ export const Composer = memo(function Composer({
 
   const saveEdit = () => {
     if (!editing) return;
-    const target = editing.list === "fu" ? queuedFollowUps[editing.idx] : queuedSteers[editing.idx];
+    // idx 为合并列表索引：直接从 queueItems 取目标文本。
+    const target = queueItems[editing.idx]?.text;
     const v = editValue.trim();
-    if (v && v !== target) onEditQueued(target, v);
+    if (v && target !== undefined && v !== target) onEditQueued(target, v);
     setEditing(null);
   };
 
@@ -402,12 +403,20 @@ export const Composer = memo(function Composer({
 
   const hasQueue = queuedSteers.length > 0 || queuedFollowUps.length > 0;
 
+  // 合并渲染：排队/引导同一列表（引导在前），key=文本。
+  // 切换类型时 React 复用同一 DOM（只换标签样式），不经历卸载+挂载的闪烁。
+  const queueItems = useMemo(() => {
+    const items: Array<{ kind: "fu" | "st"; text: string }> = [];
+    for (const t of queuedSteers) items.push({ kind: "st", text: t });
+    for (const t of queuedFollowUps) items.push({ kind: "fu", text: t });
+    return items;
+  }, [queuedSteers, queuedFollowUps]);
+
   return (
     <div className="composer">
       {hasQueue && (
         <div className="queue-panel">
-          {queuedSteers.map((t, i) => renderQueueItem("st", t, i, `s${i}`))}
-          {queuedFollowUps.map((t, i) => renderQueueItem("fu", t, i, `f${i}`))}
+          {queueItems.map((item, i) => renderQueueItem(item.kind, item.text, i, item.text))}
         </div>
       )}
       <div className="composer-row">
