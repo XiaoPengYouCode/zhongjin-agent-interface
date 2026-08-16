@@ -3,13 +3,15 @@ import { createReadStream, existsSync, readdirSync, statSync } from "node:fs";
 import { unlink } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { createServer, type ServerResponse } from "node:http";
 import { homedir } from "node:os";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AgentSessionEvent, SessionInfo } from "@earendil-works/pi-coding-agent";
 import { WebSocket, WebSocketServer } from "ws";
 import { PiService, listSessions } from "./pi-service.ts";
+import { handleSettingsRequest } from "./settings.ts";
+import { readJsonBody, sendError, sendJson } from "./http.ts";
 
 const packageDir = dirname(fileURLToPath(import.meta.url));
 // Package root: in dev (tsx) this is apps/server/src, in prod dist/ — both up one level.
@@ -414,22 +416,6 @@ const MIME: Record<string, string> = {
   ".map": "application/json",
 };
 
-function sendJson(res: ServerResponse, status: number, payload: unknown) {
-  res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
-  res.end(JSON.stringify(payload));
-}
-
-function sendError(res: ServerResponse, status: number, message: string) {
-  sendJson(res, status, { error: message });
-}
-
-async function readJsonBody(req: IncomingMessage): Promise<unknown> {
-  let body = "";
-  for await (const chunk of req) body += chunk;
-  if (!body) return {};
-  return JSON.parse(body);
-}
-
 function serveStatic(res: ServerResponse, pathname: string) {
   // Resolve inside webDist and prevent path traversal.
   const rel = pathname === "/" ? "/index.html" : pathname;
@@ -554,6 +540,10 @@ const server = createServer(async (req, res) => {
       walk(baseDir, dirParam);
       sendJson(res, 200, { items: results });
       return;
+    }
+    if (pathname === "/api/settings" || pathname === "/api/settings/file") {
+      // Settings 路由在独立模块（settings.ts）中处理。
+      if (await handleSettingsRequest(req, res, url, getAgentDir(), cwd)) return;
     }
     if (pathname === "/api/stats") {
       sendJson(res, 200, service.getStats());

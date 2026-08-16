@@ -17,4 +17,8 @@ export const qk = {
   skills: ["skills"] as const,
   /** 目录浏览（query 为空）或递归搜索（query ≥2 字符）：按 dir+query 缓存。 */
   fs: (dir: string, query: string) => ["fs", dir, query] as const,
+  /** settings 文件清单（agentDir/cwd/可管理文件）。 */
+  settings: ["settings"] as const,
+  /** settings 文件内容：按文件名缓存。 */
+  settingsFile: (name: string) => ["settings-file", name] as const,
 };

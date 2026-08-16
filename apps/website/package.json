@@ -13,6 +13,7 @@
   "dependencies": {
     "@leeoniya/ufuzzy": "catalog:",
     "@tanstack/react-query": "catalog:",
+    "@tanstack/react-router": "catalog:",
     "anser": "catalog:",
     "diff": "catalog:",
     "highlight.js": "catalog:",
